@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SMind Society</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f1a; font-family: 'Rajdhani', sans-serif; width: 100vw; height: 100vh; overflow: hidden; -webkit-touch-callout: none; -webkit-user-select: none; }
+  #viewport { touch-action: none; }
+  canvas#bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  #viewport { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; cursor: grab; }
+  #viewport.dragging { cursor: grabbing; }
+  #scene { position: absolute; transform-origin: 0 0; }
+  canvas#main { display: block; }
+  .title-bar { position: fixed; top: 20px; right: 28px; z-index: 10; font-family: 'Share Tech Mono', monospace; pointer-events: none; text-align: right; }
+  .title-bar h1 { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; color: #d4845a; font-weight: 400; text-shadow: 0 0 20px rgba(212,132,90,0.4); }
+  .title-bar .sub { font-size: 10px; color: #6a8090; letter-spacing: 2px; margin-top: 3px; }
+  .zoom-controls { position: fixed; bottom: 20px; right: 24px; z-index: 10; display: flex; flex-direction: column; gap: 4px; }
+  .zoom-btn { width: 28px; height: 28px; background: rgba(8,14,24,0.85); border: 1px solid rgba(212,132,90,0.2); color: #d4845a; font-family: 'Share Tech Mono', monospace; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .zoom-btn:hover { border-color: rgba(212,132,90,0.5); }
+  .constitution-toggle { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(8,14,24,0.85); border: 1px solid rgba(212,132,90,0.2); color: #6a8090; font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; padding: 6px 14px; cursor: pointer; text-transform: uppercase; transition: all 0.3s; }
+  .constitution-toggle:hover { border-color: rgba(212,132,90,0.5); color: #a0b0c0; }
+  .constitution-toggle.active { border-color: rgba(212,132,90,0.5); color: #d4845a; background: rgba(212,132,90,0.08); }
+  .zoom-info { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: #5a6a7a; text-align: center; margin-top: 2px; }
+  .perf-btn { width: 28px; height: 28px; background: rgba(8,14,24,0.85); border: 1px solid rgba(212,132,90,0.2); color: #6a8090; font-family: 'Share Tech Mono', monospace; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .perf-btn:hover { border-color: rgba(212,132,90,0.5); }
+  .perf-btn.active { border-color: rgba(212,132,90,0.5); color: #d4845a; background: rgba(212,132,90,0.08); }
+  .brightness-control { position: fixed; bottom: 200px; right: 24px; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 28px; background: rgba(8,14,24,0.85); border: 1px solid rgba(212,132,90,0.2); padding: 6px 0; font-family: 'Share Tech Mono', monospace; }
+  .brightness-control label { font-size: 9px; color: #6a8090; line-height: 1; }
+  .brightness-control input[type=range] { width: 60px; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(212,132,90,0.15); outline: none; border-radius: 2px; cursor: pointer; transform: rotate(-90deg); margin: 24px 0; }
+  .brightness-control input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #d4845a; cursor: pointer; }
+  .brightness-control input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #d4845a; cursor: pointer; border: none; }
+  .brightness-control .bright-val { font-size: 7px; color: #d4845a; line-height: 1; }
+  .tooltip { position: fixed; z-index: 20; pointer-events: none; background: rgba(6,10,18,0.94); border: 1px solid rgba(212,132,90,0.3); padding: 8px 12px; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: #c0c8d0; max-width: min(320px, 85vw); display: none; backdrop-filter: blur(8px); white-space: pre-line; }
+  .tooltip .tt-name { color: #d4845a; font-size: 11px; margin-bottom: 3px; }
+  .tooltip .tt-type { color: #5a7a8a; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; }
+  /* ── Detail Panel (contextual overlay for goals etc.) ── */
+  .detail-panel { position: fixed; top: 0; right: 0; width: min(420px, 90vw); height: 100vh; z-index: 40; background: rgba(6,10,18,0.96); border-left: 1px solid rgba(212,132,90,0.2); backdrop-filter: blur(16px); transform: translateX(100%); transition: transform 0.3s ease; display: flex; flex-direction: column; font-family: 'Share Tech Mono', monospace; overflow: hidden; }
+  .detail-panel.open { transform: translateX(0); }
+  .detail-panel-header { padding: 16px 20px; border-bottom: 1px solid rgba(212,132,90,0.12); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .detail-panel-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #d4845a; }
+  .detail-panel-close { width: 28px; height: 28px; background: none; border: 1px solid rgba(212,132,90,0.15); color: #6a8090; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .detail-panel-close:hover { border-color: rgba(212,132,90,0.4); color: #d4845a; }
+  .detail-panel-body { flex: 1; overflow-y: auto; padding: 12px 20px 20px; }
+  .detail-panel-body::-webkit-scrollbar { width: 4px; }
+  .detail-panel-body::-webkit-scrollbar-thumb { background: rgba(212,132,90,0.2); border-radius: 2px; }
+  .goal-card { border: 1px solid rgba(212,132,90,0.1); padding: 12px 14px; margin-bottom: 10px; background: rgba(212,132,90,0.02); transition: border-color 0.2s; }
+  .goal-card:hover { border-color: rgba(212,132,90,0.3); }
+  .goal-card-key { font-size: 9px; color: #5a7a8a; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .goal-card-outcome { font-size: 10px; color: #c0c8d0; line-height: 1.5; margin-bottom: 8px; }
+  .goal-card-row { display: flex; gap: 16px; font-size: 9px; margin-bottom: 4px; }
+  .goal-card-label { color: #5a7a8a; min-width: 50px; }
+  .goal-card-value { color: #8a9aaa; flex: 1; }
+  .goal-card-status { display: inline-block; padding: 1px 6px; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; border: 1px solid; }
+  .goal-card-status.active { color: #4acaaa; border-color: rgba(74,202,170,0.3); }
+  .goal-card-status.completed { color: #b8964a; border-color: rgba(184,150,74,0.3); }
+  .goal-card-status.paused { color: #ca4a4a; border-color: rgba(202,74,74,0.3); }
+
+  .clock-display { position: fixed; bottom: 20px; left: 28px; z-index: 10; font-family: 'Share Tech Mono', monospace; pointer-events: none; transition: left 0.25s ease; }
+  .clock-display .time { font-size: 14px; color: #d4845a; opacity: 0.8; text-shadow: 0 0 10px rgba(212,132,90,0.3); }
+  .clock-display .tz { font-size: 9px; color: #5a6a7a; margin-top: 2px; }
+
+  /* ── Side Panel ── */
+  .side-panel { position: fixed; top: 0; left: 0; width: 200px; height: 100vh; z-index: 30; background: rgba(8,12,22,0.95); border-right: 1px solid rgba(212,132,90,0.12); backdrop-filter: blur(12px); transform: translateX(-200px); transition: transform 0.25s ease; display: flex; flex-direction: column; font-family: 'Share Tech Mono', monospace; }
+  .side-panel.open { transform: translateX(0); }
+  .side-panel-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(212,132,90,0.08); display: flex; align-items: center; justify-content: space-between; }
+  .side-panel-logo { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #d4845a; font-weight: 400; text-shadow: 0 0 15px rgba(212,132,90,0.3); }
+  .side-panel-toggle { width: 24px; height: 24px; background: none; border: 1px solid rgba(212,132,90,0.15); color: #6a8090; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .side-panel-toggle:hover { border-color: rgba(212,132,90,0.4); color: #d4845a; }
+  .side-panel-nav { flex: 1; padding: 16px 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: #6a8090; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; position: relative; }
+  .nav-item:hover { color: #a0b0c0; background: rgba(212,132,90,0.04); }
+  .nav-item.active { color: #d4845a; background: rgba(212,132,90,0.08); }
+  .nav-item.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; background: #d4845a; box-shadow: 0 0 8px rgba(212,132,90,0.5); }
+  .nav-item .nav-icon { font-size: 14px; width: 20px; text-align: center; }
+  .side-panel-footer { padding: 12px 16px; border-top: 1px solid rgba(212,132,90,0.08); font-size: 8px; color: #3a4a5a; letter-spacing: 1px; }
+
+  /* Menu button (visible when panel is closed) */
+  .menu-btn { position: fixed; top: 20px; left: 20px; z-index: 25; width: 28px; height: 28px; background: rgba(8,14,24,0.85); border: 1px solid rgba(212,132,90,0.2); color: #d4845a; font-family: 'Share Tech Mono', monospace; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s, left 0.25s ease; }
+  .menu-btn:hover { border-color: rgba(212,132,90,0.5); }
+  .menu-btn.hidden { opacity: 0; pointer-events: none; }
+
+  /* Shift elements when panel is open */
+  body.panel-open .clock-display { left: 228px; }
+  body.panel-open .menu-btn { left: 220px; }
+  /* Screen containers */
+  .screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+  .screen.active { display: block; }
+  .screen-usermodel { background: #0a0f1a; display: none; }
+  .screen-usermodel.active { display: block; }
+  #graph-container { width: 100%; height: 100%; overflow: hidden; cursor: grab; touch-action: none; }
+  #graph-container.dragging { cursor: grabbing; }
+  #graph-scene { position: absolute; transform-origin: 0 0; }
+  canvas#umCanvas { display: block; }
+  #graphTooltip { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20; display: none; background: rgba(6,10,18,0.94); border: 1px solid rgba(212,132,90,0.3); padding: 10px 14px; font-family: 'Share Tech Mono', monospace; backdrop-filter: blur(8px); text-align: left; max-width: min(380px, 90vw); }
+  #graphTooltip .gt-title { color: #d4845a; font-size: 11px; margin-bottom: 4px; }
+  #graphTooltip .gt-summary { color: #c0c8d0; font-size: 9px; line-height: 1.4; margin-bottom: 4px; white-space: pre-line; }
+  #graphTooltip .gt-tags { color: #5a7a8a; font-size: 9px; letter-spacing: 1px; }
+  #graphTooltip .gt-conns { color: #6a8090; font-size: 9px; margin-top: 4px; }
+  #graphTooltip .gt-correct { margin-top: 6px; display: none; }
+  #graphTooltip .gt-correct input { width: 100%; background: rgba(20,30,50,0.8); border: 1px solid rgba(212,132,90,0.3); color: #c0c8d0; font-family: 'Share Tech Mono', monospace; font-size: 9px; padding: 4px 6px; outline: none; }
+  #graphTooltip .gt-correct input:focus { border-color: rgba(212,132,90,0.6); }
+  #graphTooltip .gt-correct .gt-hint { font-size: 8px; color: #4a5a6a; margin-top: 2px; }
+  #graphTooltip .gt-saved { color: #4acaaa; font-size: 9px; margin-top: 4px; display: none; }
+
+  /* Removed screens: infra, dimensions, hos */
+
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- Side Panel -->
+<button class="menu-btn" id="menuBtn">☰</button>
+<div class="side-panel" id="sidePanel">
+  <div class="side-panel-header">
+    <span class="side-panel-logo">🧠 SMind</span>
+    <button class="side-panel-toggle" id="panelClose">‹</button>
+  </div>
+  <div class="side-panel-nav">
+    <div class="nav-item active" data-screen="society"><span class="nav-icon">⚙</span>Society</div>
+    <div class="nav-item" data-screen="usermodel"><span class="nav-icon">👤</span>User Model</div>
+  </div>
+  <div class="side-panel-footer" id="panelVersion"></div>
+</div>
+
+<!-- Screens -->
+<div id="screen-society" class="screen active">
+  <div id="viewport"><div id="scene"><canvas id="main"></canvas></div></div>
+  <button class="constitution-toggle" id="constitutionToggle">comply with constitution</button>
+  <div class="title-bar"><h1 id="titleText">SMind Society</h1><div class="sub" id="version"></div></div>
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomIn">+</button>
+  <button class="zoom-btn" id="zoomOut">−</button>
+  <button class="zoom-btn" id="zoomFit" style="font-size:9px">⊙</button>
+  <div class="zoom-info" id="zoomLabel">100%</div>
+  <button class="perf-btn" id="perfBtn" title="Performance mode — lock low resolution">⚡</button>
+</div>
+<div class="brightness-control" id="brightnessControl"><label>☀</label><input type="range" id="brightnessSlider" min="1" max="3" step="0.1" value="1"><span class="bright-val" id="brightVal">1.0×</span></div>
+<div class="clock-display"><div class="time" id="clockTime"></div><div class="tz">Europe/Lisbon</div></div>
+<div class="tooltip" id="tooltip"><div class="tt-type"></div><div class="tt-name"></div><div class="tt-desc"></div></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-panel-header">
+    <span class="detail-panel-title" id="detailTitle"></span>
+    <button class="detail-panel-close" id="detailClose">✕</button>
+  </div>
+  <div class="detail-panel-body" id="detailBody"></div>
+</div>
+</div><!-- /screen-society -->
+
+<!-- User Model Screen (placeholder) -->
+<div id="screen-usermodel" class="screen screen-usermodel">
+  <div id="graph-container"><div id="graph-scene"><canvas id="umCanvas"></canvas></div></div>
+  <div class="zoom-controls" id="umZoom">
+    <button class="zoom-btn" id="umZoomIn">+</button>
+    <button class="zoom-btn" id="umZoomOut">−</button>
+    <button class="zoom-btn" id="umZoomFit" style="font-size:9px">⊙</button>
+    <div class="zoom-info" id="umZoomLabel">100%</div>
+  </div>
+  <div id="graphTooltip"><div class="gt-title"></div><div class="gt-summary"></div><div class="gt-tags"></div><div class="gt-conns"></div><div class="gt-correct"><input type="text" id="gtInput" placeholder="Type correction..."><div class="gt-hint">Enter to save · correction saved to disk</div></div><div class="gt-saved">✓ Saved</div></div>
+</div>
+
+
+
+<script type="module">
+let W = window.innerWidth, H = window.innerHeight; const dpr = devicePixelRatio;
+
+// ── Background ──
+const bgC = document.getElementById('bg'), bgX = bgC.getContext('2d');
+const bgMaxPx=16000000;const bgDpr=Math.min(dpr,Math.floor(Math.sqrt(bgMaxPx/(W*H)))||1);
+bgC.width = W*bgDpr; bgC.height = H*bgDpr; bgC.style.width = W+'px'; bgC.style.height = H+'px'; bgX.scale(bgDpr,bgDpr);
+const grad = bgX.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);
+grad.addColorStop(0,'#101828'); grad.addColorStop(1,'#0a0f1a');
+bgX.fillStyle = grad; bgX.fillRect(0,0,W,H);
+bgX.strokeStyle = 'rgba(30,50,70,0.14)'; bgX.lineWidth = 0.5;
+for(let x=0;x<W;x+=40){bgX.beginPath();bgX.moveTo(x,0);bgX.lineTo(x,H);bgX.stroke();}
+for(let y=0;y<H;y+=40){bgX.beginPath();bgX.moveTo(0,y);bgX.lineTo(W,y);bgX.stroke();}
+for(let y=0;y<H;y+=3){bgX.fillStyle='rgba(0,0,0,0.03)';bgX.fillRect(0,y,W,1);}
+
+// ── Pan & Zoom ──
+const viewport=document.getElementById('viewport'), scene=document.getElementById('scene');
+let zoom=0.30,panX=0,panY=0,isDragging=false,dragStartX,dragStartY,panStartX,panStartY;
+function applyTransform(){scene.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;document.getElementById('zoomLabel').textContent=Math.round(zoom*100)+'%';}
+function zoomTo(nz,px,py){const oz=zoom;nz=Math.max(0.2,Math.min(5,nz));panX=px-(px-panX)*(nz/oz);panY=py-(py-panY)*(nz/oz);zoom=nz;applyTransform();
+  if(!perfMode){const wantDpr=zoom>=ZOOM_DPR_THRESHOLD?Math.min(dpr,2):1;applySocDpr(wantDpr);}}
+viewport.addEventListener('wheel',(e)=>{e.preventDefault();zoomTo(zoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY);},{passive:false});
+viewport.addEventListener('mousedown',(e)=>{if(e.button!==0)return;isDragging=true;dragStartX=e.clientX;dragStartY=e.clientY;panStartX=panX;panStartY=panY;viewport.classList.add('dragging');});
+window.addEventListener('mousemove',(e)=>{if(!isDragging)return;panX=panStartX+(e.clientX-dragStartX);panY=panStartY+(e.clientY-dragStartY);applyTransform();});
+window.addEventListener('mouseup',()=>{isDragging=false;viewport.classList.remove('dragging');});
+document.getElementById('zoomIn').addEventListener('click',()=>zoomTo(zoom*1.25,W/2,H/2));
+document.getElementById('zoomOut').addEventListener('click',()=>zoomTo(zoom*0.8,W/2,H/2));
+document.getElementById('zoomFit').addEventListener('click',()=>{zoom=0.30;panX=W/2-canvasSize/2*0.30;panY=H/2-canvasSize/2*0.30;applyTransform();});
+
+// ── Touch: pan (1 finger) + pinch-zoom (2 fingers) ──
+let touchStartDist=0,touchStartZoom=1,touchMidX=0,touchMidY=0;
+function getTouchDist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+function getTouchMid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+
+viewport.addEventListener('touchstart',(e)=>{
+  e.preventDefault();
+  if(e.touches.length===1){
+    isDragging=true;dragStartX=e.touches[0].clientX;dragStartY=e.touches[0].clientY;panStartX=panX;panStartY=panY;
+  }else if(e.touches.length===2){
+    isDragging=false;
+    touchStartDist=getTouchDist(e.touches);touchStartZoom=zoom;
+    const mid=getTouchMid(e.touches);touchMidX=mid.x;touchMidY=mid.y;
+    panStartX=panX;panStartY=panY;dragStartX=mid.x;dragStartY=mid.y;
+  }
+},{passive:false});
+
+viewport.addEventListener('touchmove',(e)=>{
+  e.preventDefault();
+  if(e.touches.length===1&&isDragging){
+    panX=panStartX+(e.touches[0].clientX-dragStartX);panY=panStartY+(e.touches[0].clientY-dragStartY);applyTransform();
+  }else if(e.touches.length===2){
+    const dist=getTouchDist(e.touches);
+    const newZoom=touchStartZoom*(dist/touchStartDist);
+    const mid=getTouchMid(e.touches);
+    // Zoom toward pinch midpoint
+    zoomTo(newZoom,touchMidX,touchMidY);
+    // Also pan with the moving midpoint
+    panX+=mid.x-touchMidX;panY+=mid.y-touchMidY;
+    touchMidX=mid.x;touchMidY=mid.y;
+    applyTransform();
+  }
+},{passive:false});
+
+viewport.addEventListener('touchend',(e)=>{
+  if(e.touches.length===0){isDragging=false;}
+  else if(e.touches.length===1){
+    // Went from 2 fingers to 1 — reset single-finger pan origin
+    isDragging=true;dragStartX=e.touches[0].clientX;dragStartY=e.touches[0].clientY;panStartX=panX;panStartY=panY;
+  }
+},{passive:false});
+
+// ── Data (loaded from viewmodel.json) ──
+const EC='#d4845a', DC='#4a9aca', IC='#b8964a';
+let segments, relationships, cronJobs, quietStart, quietEnd, heartbeats=[];
+
+async function loadViewModel() {
+  const resp = await fetch('viewmodel.json?t='+Date.now());
+  const vm = await resp.json();
+  const cfg = vm.config;
+  quietStart = cfg.quietStart;
+  quietEnd = cfg.quietEnd;
+
+  segments = vm.segments.map(s => ({
+    ...s,
+    color: s.colorOverride || (s.type==='entity' ? EC : s.type==='integration' ? IC : DC)
+  }));
+  relationships = vm.relationships;
+  cronJobs = vm.cronJobs;
+  // Assign ring visibility: snapshot + heartbeats = today only, others = all rings
+  const todayOnlyEntities = new Set(['snap', 'face']);
+  cronJobs.forEach(job => {
+    if (todayOnlyEntities.has(job.entityId)) {
+      job.rings = ['today'];
+    } else {
+      job.rings = job.rings || ['today','week','month','year'];
+    }
+  });
+
+  document.getElementById('version').textContent=vm.version||'';
+  heartbeats = [];
+  for(let hh=quietEnd; hh<quietStart; hh++){
+    heartbeats.push({name:'heartbeat',entityId:cfg.heartbeatEntityId,hour:hh,minute:0,emoji:cfg.heartbeatEmoji,isHeartbeat:true});
+  }
+}
+await loadViewModel();
+
+// ── hOS dimensions data (for rings on society screen) ──
+let hosSections = [];
+{
+  const vm = await (await fetch('viewmodel.json?t='+Date.now())).json();
+  const hd = vm.hosDimensions;
+  const ld = vm.lifeDimensions;
+  if (hd && ld) {
+    const dimMap = {};
+    ld.tiers.forEach(t => t.dimensions.forEach(d => { dimMap[d.id] = d; }));
+    // Build goal detail map from segments
+    const goalDetailMap = {};
+    const goalsSeg = vm.segments.find(s => s.id === 'goals');
+    if (goalsSeg && goalsSeg.children) goalsSeg.children.forEach(g => { if (g.key) goalDetailMap[g.key] = g; });
+    function subDimCount(did) { const d = dimMap[did]; return d && d.subDimensions ? d.subDimensions.length : 1; }
+    const statusColor = { covered: '#4acaaa', partial: '#d4a45a', uncovered: '#ca4a4a' };
+    const MIN_CAT_WEIGHT = 3;
+    let totalWeight = 0;
+    const catWeights = [];
+    hd.categories.forEach(cat => {
+      let w = 0; cat.dimensions.forEach(did => { w += subDimCount(did); });
+      catWeights.push({ raw: w, weight: Math.max(w, MIN_CAT_WEIGHT) });
+      totalWeight += Math.max(w, MIN_CAT_WEIGHT);
+    });
+    let unmappedWeight = 0;
+    hd.unmapped.dimensions.forEach(did => { unmappedWeight += subDimCount(did); });
+    totalWeight += unmappedWeight;
+
+    const sectionGap = 0.04;
+    const totalSections = hd.categories.length + 1;
+    const totalArcAngle = Math.PI * 2 - sectionGap * totalSections;
+    let currentAngle = -Math.PI / 2;
+
+    hd.categories.forEach((cat, ci) => {
+      const catArc = (catWeights[ci].weight / totalWeight) * totalArcAngle;
+      const section = { category: cat, color: cat.color, startAngle: currentAngle, endAngle: currentAngle + catArc, dimensions: [], unmapped: false };
+      let innerAngle = currentAngle;
+      const catSubDims = catWeights[ci].raw || 1;
+      cat.dimensions.forEach(did => {
+        const d = dimMap[did];
+        const sc = subDimCount(did);
+        const dimArc = (sc / catSubDims) * catArc;
+        const dimGoals = (d && d.goals ? d.goals : []).map(gk => goalDetailMap[gk]).filter(Boolean);
+        section.dimensions.push({
+          id: did, name: d ? d.name : did, status: d ? d.status : 'uncovered',
+          statusColor: statusColor[d ? d.status : 'uncovered'] || '#5a6a7a',
+          subDims: d ? d.subDimensions : [], subDimCount: sc, goals: dimGoals,
+          startAngle: innerAngle, endAngle: innerAngle + dimArc, midAngle: innerAngle + dimArc / 2
+        });
+        innerAngle += dimArc;
+      });
+      hosSections.push(section);
+      currentAngle += catArc + sectionGap;
+    });
+
+    // Unmapped
+    const unmapArc = (unmappedWeight / totalWeight) * totalArcAngle;
+    const unmapSec = { category: null, color: hd.unmapped.color, startAngle: currentAngle, endAngle: currentAngle + unmapArc, dimensions: [], unmapped: true, label: hd.unmapped.label || 'Individual' };
+    let innerAngle = currentAngle;
+    hd.unmapped.dimensions.forEach(did => {
+      const d = dimMap[did];
+      const sc = subDimCount(did);
+      const dimArc = (sc / unmappedWeight) * unmapArc;
+      const dimGoals2 = (d && d.goals ? d.goals : []).map(gk => goalDetailMap[gk]).filter(Boolean);
+      unmapSec.dimensions.push({
+        id: did, name: d ? d.name : did, status: d ? d.status : 'uncovered',
+        statusColor: statusColor[d ? d.status : 'uncovered'] || '#5a6a7a',
+        subDims: d ? d.subDimensions : [], subDimCount: sc, goals: dimGoals2,
+        startAngle: innerAngle, endAngle: innerAngle + dimArc, midAngle: innerAngle + dimArc / 2
+      });
+      innerAngle += dimArc;
+    });
+    hosSections.push(unmapSec);
+  }
+}
+
+// ── Constitution mode (cosmetic vocabulary swap) ──
+let constitutionMode = false;
+const constitutionNames = {
+  'udm': 'Data Hygiene Agent',
+  'sgc': 'Life Dimensions Agent',
+  'sch': 'Time and Mediator Agent',
+  'face_ast': 'HXD Missing Data Detector',
+  'face': 'Ingestor and User Communicator',
+  'snap': 'Memory Management Agent',
+  'scientist': 'Research Agent',
+  'evaluator': 'Evaluator Agent',
+  'ldl': 'Life Dimensions Mediator Agent',
+};
+const constitutionCenter = 'MORPHEUS';
+const constitutionTitle = 'Morpheus Society';
+
+function getDisplayName(seg) {
+  if (constitutionMode && constitutionNames[seg.id]) return constitutionNames[seg.id];
+  return seg.name;
+}
+function getCenterText() {
+  return constitutionMode ? constitutionCenter : 'SMIND';
+}
+
+document.getElementById('constitutionToggle').addEventListener('click', function() {
+  constitutionMode = !constitutionMode;
+  this.classList.toggle('active', constitutionMode);
+  document.getElementById('titleText').textContent = constitutionMode ? constitutionTitle : 'SMind Society';
+});
+
+// ── Canvas ──
+const canvasSize=2800;
+const mc=document.getElementById('main');
+mc.style.width=canvasSize+'px';mc.style.height=canvasSize+'px';
+mc.style.willChange='transform';
+let socDpr=1;
+let ctx;
+const ZOOM_DPR_THRESHOLD=1.5;
+let perfMode=false;
+function applySocDpr(newDpr){
+  if(ctx&&newDpr===socDpr)return;
+  socDpr=newDpr;
+  mc.width=canvasSize*socDpr;mc.height=canvasSize*socDpr;
+  ctx=mc.getContext('2d');ctx.scale(socDpr,socDpr);
+}
+applySocDpr(1);
+document.getElementById('perfBtn').addEventListener('click',function(){
+  perfMode=!perfMode;
+  this.classList.toggle('active',perfMode);
+  if(perfMode)applySocDpr(1);
+  else{const wantDpr=zoom>=ZOOM_DPR_THRESHOLD?Math.min(dpr,2):1;applySocDpr(wantDpr);}
+});
+panX=W/2-canvasSize/2*0.30;panY=H/2-canvasSize/2*0.30;applyTransform();
+
+const cxc=canvasSize/2,cyc=canvasSize/2;
+
+// ── RADII — TRIANGLE + OUTER RING LAYOUT ──
+// Three mini-rings arranged in a triangle inside the entity ring
+const miniRingR = 105;        // radius of each mini-ring (outer edge)
+const miniRingBand = 24;      // thickness of ring band
+const miniRingInnerR = miniRingR - miniRingBand; // inner edge
+const miniRingLabelR = miniRingR + 14;
+const miniRingCenterDist = 145; // distance from canvas center to each mini-ring center
+
+// Mini-ring centers (triangle: top, bottom-right, bottom-left)
+const miniRingCenters = [
+  { x: cxc + miniRingCenterDist * Math.cos(-Math.PI/2), y: cyc + miniRingCenterDist * Math.sin(-Math.PI/2) },   // top: integrations
+  { x: cxc + miniRingCenterDist * Math.cos(Math.PI/6), y: cyc + miniRingCenterDist * Math.sin(Math.PI/6) },     // bottom-right: user data
+  { x: cxc + miniRingCenterDist * Math.cos(5*Math.PI/6), y: cyc + miniRingCenterDist * Math.sin(5*Math.PI/6) }, // bottom-left: smind tables
+];
+
+// Legacy radii kept for entity ring + cross-ring connections
+const dataInnerR = miniRingInnerR;  // used by cross-ring srcR/tgtR logic
+const dataOuterR = miniRingR;       // used by cross-ring srcR/tgtR logic
+const dataChildOuterR = miniRingR + 16;
+const dataLabelStart = miniRingR - miniRingBand - 20;
+
+// Outer ring (society entities) 
+const entityInnerR = 340;
+const entityOuterR = 368;
+const entityChildOuterR = 384;
+const entityLabelStart = 392;
+
+// Connection arc zone between rings (not used for triangle layout, but kept for entity↔entity)
+const arcZoneR = (miniRingR + miniRingCenterDist + entityInnerR) / 2;
+
+// ── TIME RINGS (inside→out = near→far temporal) ──
+// Today ring (24 hours)
+const timeRingInner = entityChildOuterR + 160; // = 544
+const timeRingOuter = timeRingInner + 24; // = 568
+const timeLabelR = timeRingOuter + 18; // = 586
+const minuteRingR = timeRingOuter + 8;
+
+// Week ring (7 days)
+const weekRingInner = timeRingOuter + 70;
+const weekRingOuter = weekRingInner + 24;
+const weekLabelR = weekRingOuter + 18;
+
+// Month ring (~4-5 weeks)
+const monthRingInner = weekRingOuter + 70;
+const monthRingOuter = monthRingInner + 24;
+const monthLabelR = monthRingOuter + 18;
+
+// Year ring (12 months)
+const yearRingInner = monthRingOuter + 70;
+const yearRingOuter = yearRingInner + 24;
+const yearLabelR = yearRingOuter + 18;
+
+// hOS dimension rings (outside year ring, with gap)
+const hosSubDimR1 = yearRingOuter + 80;
+const hosSubDimR2 = hosSubDimR1 + 30;
+const hosDimR1 = hosSubDimR2 + 8;
+const hosDimR2 = hosDimR1 + 50;
+const hosDimLabelR = hosDimR2 + 20;
+const hosCatR1 = hosDimR2 + 8;
+const hosCatR2 = hosCatR1 + 30;
+const hosCatLabelR = hosCatR2 + 80;
+
+// ── Split into triangle mini-rings + outer ring after data loading ──
+
+// Mini-ring 0 (top): Integrations / data sources
+const miniRing0Segs = [
+  { id: "withings_src", name: "Withings", type: "source", emoji: "⚖️", children: [], desc: "Health data: weight, body composition, activity", color: "#b8964a" },
+  { id: "telegram_src", name: "Telegram", type: "source", emoji: "📱", children: [], desc: "User interaction, conversation data", color: "#b8964a" },
+  { id: "google_src", name: "Google Services", type: "source", emoji: "🔍", children: [], desc: "Calendar, Drive, email data", color: "#b8964a" },
+  { id: "github_src", name: "GitHub", type: "source", emoji: "🐙", children: [], desc: "PR tracking, society artifact versioning", color: "#b8964a" },
+];
+
+// Mini-ring 1 (bottom-right): User model + user data tables
+const miniRing1Segs = [];
+["profile", "scheduling_constraints", "history"].forEach(id => {
+  const seg = segments.find(s => s.type === "db" && s.id === id);
+  if (seg) miniRing1Segs.push({...seg});
+});
+
+// Mini-ring 2 (bottom-left): SMind operational tables
+const smindTableIds = ["goals", "schedule_days", "schedule_outcomes", "questions", "life_dimensions"];
+const miniRing2Segs = [];
+smindTableIds.forEach(id => {
+  const seg = segments.find(s => s.type === "db" && s.id === id);
+  if (seg) miniRing2Segs.push({...seg});
+});
+// Add any missing smind tables as fallback
+if (miniRing2Segs.length === 0) {
+  miniRing2Segs.push(
+    { id: "goals", name: "smind_smart_goals", type: "db", emoji: "🎯", children: [], desc: "SMART goals", color: "#4acaaa" },
+    { id: "schedule_days", name: "smind_schedule_days", type: "db", emoji: "📅", children: [], desc: "Daily schedules", color: "#4acaaa" },
+    { id: "schedule_outcomes", name: "smind_schedule_outcomes", type: "db", emoji: "📊", children: [], desc: "Schedule outcomes", color: "#4acaaa" },
+    { id: "questions", name: "smind_data_gap_questions", type: "db", emoji: "❓", children: [], desc: "Data gap questions for Face", color: "#4acaaa" },
+  );
+}
+
+const miniRings = [
+  { label: "INTEGRATIONS", segs: miniRing0Segs, center: miniRingCenters[0], color: "#b8964a" },
+  { label: "USER DATA", segs: miniRing1Segs, center: miniRingCenters[1], color: "#4a9aca" },
+  { label: "SOCIETY TABLES", segs: miniRing2Segs, center: miniRingCenters[2], color: "#a07858" },
+];
+
+// Layout each mini-ring (segments inherit ring color)
+const miniGapAngle = 0.06;
+const allInnerSegments = []; // flat list for backwards compat
+miniRings.forEach((ring, ri) => {
+  const n = ring.segs.length;
+  const totalGap = miniGapAngle * n;
+  const totalArc = Math.PI * 2 - totalGap;
+  const arcPer = totalArc / n;
+  let angle = -Math.PI / 2;
+  ring.segs.forEach(seg => {
+    seg.startAngle = angle;
+    seg.endAngle = angle + arcPer;
+    seg.midAngle = angle + arcPer / 2;
+    seg.childAngles = [];
+    seg.miniRingIdx = ri;
+    seg.ringCenter = ring.center;
+    seg.color = ring.color; // inherit ring color
+    angle += arcPer + miniGapAngle;
+  });
+  allInnerSegments.push(...ring.segs);
+});
+
+// Backwards compat alias
+const innerSegments = allInnerSegments;
+
+// Create outer ring segments (7 entities)
+const outerSegments = [];
+const keepOuterEntities = ["udm", "sgc", "sch", "face_ast", "face", "snap", "scientist", "evaluator", "ldl", "health_lda", "finances_lda", "career_lda", "relationships_lda", "spirituality_lda", "enjoyment_lda", "impact_lda"];
+segments.forEach(seg => {
+  if (seg.type === "entity" && keepOuterEntities.includes(seg.id)) {
+    outerSegments.push({...seg});
+  }
+});
+
+// ── Layout outer ring ──
+const outerGapAngle = 0.025;
+const outerTotalGap = outerGapAngle * outerSegments.length;
+const outerTotalArc = Math.PI * 2 - outerTotalGap;
+const outerEntityWeight = 3; // Entities get larger weight
+const outerTotalWeight = outerSegments.reduce((s, seg) => s + outerEntityWeight, 0);
+let outerSAngle = -Math.PI / 2;
+outerSegments.forEach(seg => {
+  const w = outerEntityWeight;
+  const arc = (w / outerTotalWeight) * outerTotalArc;
+  seg.startAngle = outerSAngle; seg.endAngle = outerSAngle + arc; seg.midAngle = outerSAngle + arc / 2;
+  if (seg.children.length > 0) {
+    const ca = arc / (seg.children.length + 1);
+    seg.childAngles = seg.children.map((c, i) => ({ name: c, angle: seg.startAngle + ca * (i + 1) }));
+  } else { seg.childAngles = []; }
+  outerSAngle += arc + outerGapAngle;
+});
+
+// ── Build segment map and ID sets from both arrays ──
+const segMap = {};
+innerSegments.forEach(s => segMap[s.id] = s);
+outerSegments.forEach(s => segMap[s.id] = s);
+const outerIds = new Set(outerSegments.map(s => s.id));
+const innerIds = new Set(innerSegments.map(s => s.id));
+
+// ── Inner ring relationships removed — society entities handle data movement ──
+const innerRelationships = [];
+
+// ── Cross-ring connections derived from smind_society_core_jobs instructions ──
+// Verified 2026-02-18 against actual MUST READ SOURCES and primary artifacts
+const crossRingRelationships = [
+  // UDM: primary artifact = user_model_* + user_data_* (bidi)
+  // Withings integration reads health data. Pushes PRs. Can write questions.
+  ["udm", "profile", "bidi", 3],
+  ["udm", "history", "bidi", 2],
+  ["udm", "scheduling_constraints", "bidi", 2],
+  ["udm", "withings_src", "reads", 2],
+  ["udm", "github_src", "owns", 1],
+  ["udm", "questions", "owns", 1],
+
+  // SGC: primary artifact = smind_smart_goals (bidi — reads to evaluate, writes to improve)
+  // Reads profile, scheduling_constraints for coverage benchmark context. Can write questions.
+  ["sgc", "goals", "bidi", 3],
+  ["sgc", "profile", "reads", 2],
+  ["sgc", "scheduling_constraints", "reads", 1],
+  ["sgc", "github_src", "owns", 1],
+  ["sgc", "questions", "owns", 1],
+
+  // Scheduler: primary artifact = smind_schedule_days (bidi)
+  // Reads schedule_outcomes, smart_goals, profile, scheduling_constraints. Can write questions.
+  ["sch", "schedule_days", "bidi", 3],
+  ["sch", "schedule_outcomes", "reads", 2],
+  ["sch", "goals", "reads", 2],
+  ["sch", "profile", "reads", 1],
+  ["sch", "scheduling_constraints", "reads", 2],
+  ["sch", "github_src", "owns", 1],
+  ["sch", "questions", "owns", 1],
+
+  // Face Ast: primary artifact = smind_data_gap_questions (bidi)
+  // Reads profile, scheduling_constraints. Reads score/work from UDM/SGC/SCH entities.
+  ["face_ast", "questions", "bidi", 3],
+  ["face_ast", "profile", "reads", 2],
+  ["face_ast", "scheduling_constraints", "reads", 1],
+  ["face_ast", "udm", "reads", 1],
+  ["face_ast", "sgc", "reads", 1],
+  ["face_ast", "sch", "reads", 1],
+  ["face_ast", "github_src", "owns", 1],
+
+  // Face: delivers questions via Telegram, writes answers back to user model (bidi).
+  // Reads questions to know what to ask.
+  ["face", "profile", "bidi", 2],
+  ["face", "scheduling_constraints", "bidi", 2],
+  ["face", "history", "bidi", 2],
+  ["face", "telegram_src", "bidi", 2],
+  ["face", "questions", "reads", 2],
+
+  // Snapshot: reads ALL tables for CSV export. Pushes snapshots to GitHub.
+  ["snap", "profile", "reads", 1],
+  ["snap", "scheduling_constraints", "reads", 1],
+  ["snap", "history", "reads", 1],
+  ["snap", "goals", "reads", 1],
+  ["snap", "schedule_days", "reads", 1],
+  ["snap", "schedule_outcomes", "reads", 1],
+  ["snap", "questions", "reads", 1],
+  ["snap", "github_src", "owns", 2],
+
+  // Scientist: reads data tables for benchmark building. Pushes PRs. Can write questions.
+  ["scientist", "profile", "reads", 2],
+  ["scientist", "scheduling_constraints", "reads", 2],
+  ["scientist", "history", "reads", 2],
+  ["scientist", "goals", "reads", 2],
+  ["scientist", "schedule_days", "reads", 1],
+  ["scientist", "schedule_outcomes", "reads", 1],
+  ["scientist", "questions", "reads", 1],
+  ["scientist", "github_src", "owns", 1],
+  ["scientist", "questions", "owns", 1],
+  // Scientist → entity arcs (produces benchmarks consumed by these entities)
+  ["scientist", "udm", "owns", 2],
+  ["scientist", "sgc", "owns", 2],
+  ["scientist", "sch", "owns", 2],
+  ["scientist", "face_ast", "owns", 2],
+
+  // Evaluator: grades data against benchmarks, creates GitHub issues for workers
+  ["evaluator", "profile", "reads", 2],
+  ["evaluator", "scheduling_constraints", "reads", 2],
+  ["evaluator", "history", "reads", 2],
+  ["evaluator", "goals", "reads", 2],
+  ["evaluator", "life_dimensions", "reads", 2],
+  ["evaluator", "schedule_days", "reads", 2],
+  ["evaluator", "questions", "reads", 2],
+  ["evaluator", "github_src", "owns", 3],
+  // Evaluator reads benchmarks from Scientist
+  ["evaluator", "scientist", "reads", 2],
+
+  // Life Dimensions Locator: discovers/maintains life dimensions
+  ["ldl", "life_dimensions", "bidi", 3],
+  ["ldl", "github_src", "reads", 2],
+
+  // Snapshot also reads life_dimensions
+  ["snap", "life_dimensions", "reads", 1],
+
+  // SGC reads life_dimensions for coverage
+  ["sgc", "life_dimensions", "reads", 2],
+
+  // Life Dimension Agents: each reads life_dimensions and owns GitHub issues
+  ["health_lda", "life_dimensions", "reads", 2],
+  ["health_lda", "github_src", "owns", 1],
+  ["finances_lda", "life_dimensions", "reads", 2],
+  ["finances_lda", "github_src", "owns", 1],
+  ["career_lda", "life_dimensions", "reads", 2],
+  ["career_lda", "github_src", "owns", 1],
+  ["relationships_lda", "life_dimensions", "reads", 2],
+  ["relationships_lda", "github_src", "owns", 1],
+  ["spirituality_lda", "life_dimensions", "reads", 2],
+  ["spirituality_lda", "github_src", "owns", 1],
+  ["enjoyment_lda", "life_dimensions", "reads", 2],
+  ["enjoyment_lda", "github_src", "owns", 1],
+  ["impact_lda", "life_dimensions", "reads", 2],
+  ["impact_lda", "github_src", "owns", 1],
+];
+
+// ── Helpers ──
+function p2c(a,r){return{x:cxc+Math.cos(a)*r,y:cyc+Math.sin(a)*r};}
+// Mini-ring version: polar to cartesian relative to a custom center
+function p2cAt(cx,cy,a,r){return{x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r};}
+function h2r(hex,a){return`rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;}
+// Get the world-space position of a segment's midpoint (works for both mini-ring and outer ring segments)
+function segWorldPos(seg, r) {
+  if (seg.ringCenter) {
+    return p2cAt(seg.ringCenter.x, seg.ringCenter.y, seg.midAngle, r !== undefined ? r : miniRingR);
+  }
+  return p2c(seg.midAngle, r !== undefined ? r : entityOuterR);
+}
+function drawArc(sa,ea,r1,r2,fill,stroke,lw){
+  ctx.beginPath();ctx.arc(cxc,cyc,r2,sa,ea);ctx.arc(cxc,cyc,r1,ea,sa,true);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+}
+function drawArcAt(cx,cy,sa,ea,r1,r2,fill,stroke,lw){
+  ctx.beginPath();ctx.arc(cx,cy,r2,sa,ea);ctx.arc(cx,cy,r1,ea,sa,true);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+}
+function t2a(h,m){return((h+m/60)/24)*Math.PI*2-Math.PI/2;}
+function getLisbonTime(){
+  const now=new Date();
+  const s=now.toLocaleString('en-US',{timeZone:'Europe/Lisbon',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const p=s.split(':');return{h:parseInt(p[0]),m:parseInt(p[1]),s:parseInt(p[2]),str:p[0]+':'+p[1]+':'+p[2]};
+}
+
+// ── Particle System removed — replaced by pulse waves ──
+
+function render(hoverSeg,hoverCron,hovHour,hovHosDim,hovHosCat,hovWkDay,hovMoWk,hovYrMo){
+  ctx.clearRect(0,0,canvasSize,canvasSize);
+  const lisbon=getLisbonTime();
+  const nowAngle=t2a(lisbon.h,lisbon.m+lisbon.s/60);
+  const midnightAngle=-Math.PI/2;
+
+  // Guide circles
+  [entityInnerR-40, timeRingOuter+20, weekRingOuter+20, monthRingOuter+20, yearRingOuter+30].forEach(r=>{
+    ctx.beginPath();ctx.arc(cxc,cyc,r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(212,132,90,0.06)';ctx.lineWidth=0.5;ctx.stroke();
+  });
+  // Triangle guide lines between mini-ring centers
+  ctx.beginPath();
+  miniRingCenters.forEach((c, i) => {
+    const next = miniRingCenters[(i + 1) % 3];
+    ctx.moveTo(c.x, c.y); ctx.lineTo(next.x, next.y);
+  });
+  ctx.strokeStyle = 'rgba(212,132,90,0.03)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+  // ═══ 24H TIME RING (segmented by hour, inner glow) ═══
+  const qsa=t2a(quietStart,0),qea=t2a(quietEnd,0);
+  const hourGap=0.02;
+  const trMid=(timeRingInner+timeRingOuter)/2;
+  const glowW=3; // width of inner glow strip
+  for(let h=0;h<24;h++){
+    const ha0=t2a(h,0)+hourGap/2;
+    const ha1=t2a(h+1,0)-hourGap/2;
+    const isQuiet=h>=quietStart||h<quietEnd;
+    const hAngle=t2a(h,30); // mid-hour angle for this segment
+    // Determine if this hour is elapsed
+    const isElapsed=hAngle<=nowAngle&&hAngle>=midnightAngle;
+    // Base fill
+    const isHovHour=hovHour===h;
+    const fill=isHovHour?'rgba(60,80,100,'+bA(0.5)+')':(isQuiet?'rgba(20,25,45,'+bA(0.5)+')':'rgba(30,45,65,'+bA(0.35)+')');
+    const stroke=isHovHour?'rgba(140,170,200,'+bA(0.5)+')':null;
+    drawArc(ha0,ha1,timeRingInner,timeRingOuter,fill,stroke,isHovHour?1.5:0);
+    if(isElapsed){
+      // Recency gradient: hours closer to "now" glow brighter
+      // Normalize: 0 = midnight, 1 = now
+      const segMidNorm=(hAngle-midnightAngle)/(nowAngle-midnightAngle);
+      const recency=Math.pow(Math.max(0,Math.min(1,segMidNorm)),1.5); // ease-in: recent hours much brighter
+      const glowAlpha=bA(0.15+recency*0.7);
+      const blur=(4+recency*14)*outerBright;
+      ctx.save();
+      ctx.shadowColor='rgba(212,132,90,'+glowAlpha+')';
+      ctx.shadowBlur=blur;
+      drawArc(ha0,ha1,timeRingInner+1,timeRingOuter-1,'rgba(212,132,90,'+bA(0.04+recency*0.12)+')',null);
+      ctx.restore();
+    } else if(!isQuiet) {
+      // Upcoming active: faint cool glow
+      ctx.save();
+      ctx.shadowColor='rgba(100,160,200,'+bA(0.3)+')';
+      ctx.shadowBlur=6*outerBright;
+      drawArc(ha0,ha1,timeRingInner+1,timeRingOuter-1,'rgba(100,160,200,'+bA(0.04)+')',null);
+      ctx.restore();
+    }
+  }
+  // Quiet boundary markers
+  [qsa,qea].forEach(ba=>{
+    const p1=p2c(ba,timeRingInner-4),p2t=p2c(ba,timeRingOuter+4);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2t.x,p2t.y);
+    ctx.strokeStyle='rgba(80,60,120,'+bA(0.35)+')';ctx.lineWidth=1;ctx.stroke();
+  });
+  // Zone icons: 🌙 at quiet start, ☀️ at active start
+  const iconR=timeRingOuter+14;
+  [{a:qsa,icon:'🌙'},{a:qea,icon:'☀️'}].forEach(({a,icon})=>{
+    const ip=p2c(a,iconR);
+    ctx.save();ctx.font='12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(icon,ip.x,ip.y);ctx.restore();
+  });
+  // Hour ticks
+  for(let h=0;h<24;h++){
+    const a=t2a(h,0);const isMaj=h%6===0;const isHalf=h%3===0;
+    const ti=isMaj?timeRingInner-8:(isHalf?timeRingInner-4:timeRingInner-2);
+    const to=isMaj?timeRingOuter+8:(isHalf?timeRingOuter+4:timeRingOuter+2);
+    const p1=p2c(a,ti),p2t=p2c(a,to);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2t.x,p2t.y);
+    ctx.strokeStyle=isMaj?'rgba(100,130,160,'+bA(0.45)+')':'rgba(60,80,100,'+bA(0.22)+')';ctx.lineWidth=isMaj?1:0.5;ctx.stroke();
+    if(h%3===0){
+      const lp=p2c(a,timeLabelR+(isMaj?4:0));
+      ctx.save();ctx.translate(lp.x,lp.y);
+      let rot=a;const isR=rot>-Math.PI/2&&rot<Math.PI/2;if(!isR)rot+=Math.PI;
+      ctx.rotate(rot);ctx.font="12px 'Share Tech Mono',monospace";
+      ctx.fillStyle='rgba(140,170,200,'+bA(0.85)+')';
+      ctx.textAlign=isR?'left':'right';ctx.textBaseline='middle';
+      ctx.fillText(String(h).padStart(2,'0')+':00',0,0);ctx.restore();
+    }
+  }
+  // Now sweep
+  const sp1=p2c(nowAngle,timeRingInner-12),sp2=p2c(nowAngle,timeRingOuter+12);
+  ctx.beginPath();ctx.moveTo(sp1.x,sp1.y);ctx.lineTo(sp2.x,sp2.y);
+  ctx.strokeStyle='rgba(212,132,90,'+bA(0.8)+')';ctx.lineWidth=1.5;ctx.stroke();
+  // Now dot
+  const nd=p2c(nowAngle,(timeRingInner+timeRingOuter)/2);
+  ctx.beginPath();ctx.arc(nd.x,nd.y,4,0,Math.PI*2);ctx.fillStyle='rgba(212,132,90,'+bA(1)+')';ctx.fill();
+  const ng=ctx.createRadialGradient(nd.x,nd.y,0,nd.x,nd.y,18);
+  ng.addColorStop(0,'rgba(212,132,90,'+bA(0.3)+')');ng.addColorStop(1,'rgba(212,132,90,0)');
+  ctx.fillStyle=ng;ctx.beginPath();ctx.arc(nd.x,nd.y,18,0,Math.PI*2);ctx.fill();
+
+  // ═══ MINUTE RING — orbiting on time ring edge ═══
+  const minFrac=lisbon.s/60;
+  const minAngle=-Math.PI/2+minFrac*Math.PI*2;
+  // The minute ring center is at the "now" position on the time ring outer edge
+  const minuteCx=nd.x;const minuteCy=nd.y;
+  const minR=14;
+  // Track
+  ctx.beginPath();ctx.arc(nd.x,nd.y,minR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(212,132,90,'+bA(0.08)+')';ctx.lineWidth=1.5;ctx.stroke();
+  // Progress arc
+  ctx.beginPath();ctx.arc(nd.x,nd.y,minR,-Math.PI/2,minAngle);
+  ctx.strokeStyle='rgba(212,132,90,'+bA(0.35)+')';ctx.lineWidth=1.5;ctx.stroke();
+  // Minute dot
+  const mdx=nd.x+Math.cos(minAngle)*minR,mdy=nd.y+Math.sin(minAngle)*minR;
+  ctx.beginPath();ctx.arc(mdx,mdy,2.5,0,Math.PI*2);ctx.fillStyle='rgba(212,132,90,'+bA(0.7)+')';ctx.fill();
+  const mmg=ctx.createRadialGradient(mdx,mdy,0,mdx,mdy,8);
+  mmg.addColorStop(0,'rgba(212,132,90,'+bA(0.25)+')');mmg.addColorStop(1,'rgba(212,132,90,0)');
+  ctx.fillStyle=mmg;ctx.beginPath();ctx.arc(mdx,mdy,8,0,Math.PI*2);ctx.fill();
+
+  // ═══ WEEK RING (7 days, Mon-Sun) ═══
+  {
+    const lisbonNow = new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const dayOfWeek = (lisbonNow.getDay()+6)%7; // 0=Mon, 6=Sun
+    const dayNames = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+    const segGap = 0.03;
+    const totalArc = Math.PI*2 - segGap*7;
+    const segArc = totalArc/7;
+    for(let d=0; d<7; d++){
+      const sa = -Math.PI/2 + d*(segArc+segGap) + segGap/2;
+      const ea = sa + segArc;
+      const isToday = d===dayOfWeek;
+      const isElapsed = d<dayOfWeek;
+      const isHovDay = hovWkDay===d;
+
+      // Base fill
+      const fill = isHovDay ? 'rgba(60,80,100,'+bA(0.5)+')' : 'rgba(30,45,65,'+bA(0.35)+')';
+      const stroke = isHovDay ? 'rgba(140,170,200,'+bA(0.5)+')' : null;
+      drawArc(sa,ea,weekRingInner,weekRingOuter,fill,stroke,isHovDay?1.5:0);
+
+      // Elapsed glow
+      if(isElapsed || isToday){
+        const recency = isToday ? 1 : (d/Math.max(1,dayOfWeek));
+        const glowA = bA(0.08 + recency*0.15);
+        ctx.save();
+        ctx.shadowColor='rgba(212,132,90,'+bA(0.1+recency*0.3)+')';
+        ctx.shadowBlur=(3+recency*8)*outerBright;
+        drawArc(sa,ea,weekRingInner+1,weekRingOuter-1,'rgba(212,132,90,'+glowA+')',null);
+        ctx.restore();
+      }
+
+      // Today indicator
+      if(isToday){
+        const midA = (sa+ea)/2;
+        const sp1=p2c(midA,weekRingInner-6), sp2=p2c(midA,weekRingOuter+6);
+        ctx.beginPath();ctx.moveTo(sp1.x,sp1.y);ctx.lineTo(sp2.x,sp2.y);
+        ctx.strokeStyle='rgba(212,132,90,'+bA(0.7)+')';ctx.lineWidth=1.5;ctx.stroke();
+        const nd2=p2c(midA,(weekRingInner+weekRingOuter)/2);
+        ctx.beginPath();ctx.arc(nd2.x,nd2.y,3,0,Math.PI*2);ctx.fillStyle='rgba(212,132,90,'+bA(1)+')';ctx.fill();
+      }
+
+      // Day label
+      const midA = (sa+ea)/2;
+      const lp = p2c(midA, weekLabelR);
+      ctx.save();ctx.translate(lp.x,lp.y);
+      let rot=midA+Math.PI/2;
+      while(rot>Math.PI)rot-=Math.PI*2;
+      if(rot>Math.PI/2||rot<-Math.PI/2)rot+=Math.PI;
+      ctx.rotate(rot);
+      ctx.font="10px 'Share Tech Mono',monospace";
+      ctx.fillStyle='rgba(140,170,200,'+bA(isToday?0.9:0.6)+')';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const dayDate2=new Date(lisbonNow);dayDate2.setDate(dayDate2.getDate()+(d-dayOfWeek));
+      const dStr=dayDate2.getDate()+'/'+(dayDate2.getMonth()+1);
+      ctx.fillText(dayNames[d]+' '+dStr,0,0);
+      ctx.restore();
+
+    }
+
+    // Ring border ticks at segment boundaries
+    for(let d=0; d<7; d++){
+      const a = -Math.PI/2 + d*(segArc+segGap);
+      const p1=p2c(a,weekRingInner-2),p2t=p2c(a,weekRingOuter+2);
+      ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2t.x,p2t.y);
+      ctx.strokeStyle='rgba(60,80,100,'+bA(0.2)+')';ctx.lineWidth=0.5;ctx.stroke();
+    }
+  }
+
+  // ═══ MONTH RING (weeks of current month) ═══
+  {
+    const lisbonNow = new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const year = lisbonNow.getFullYear(), month = lisbonNow.getMonth();
+    const daysInMonth = new Date(year,month+1,0).getDate();
+    const firstDayOfMonth = new Date(year,month,1).getDay(); // 0=Sun
+    const firstMon = (firstDayOfMonth+6)%7; // offset from Monday
+    // Calculate number of ISO-style weeks touching this month
+    const numWeeks = Math.ceil((daysInMonth+firstMon)/7);
+    const currentDay = lisbonNow.getDate();
+    const currentWeek = Math.floor((currentDay-1+firstMon)/7);
+    const weekLabels = [];
+    for(let w=0;w<numWeeks;w++){
+      const startDay = Math.max(1, w*7-firstMon+1);
+      const endDay = Math.min(daysInMonth, (w+1)*7-firstMon);
+      weekLabels.push(startDay+'-'+endDay);
+    }
+
+    const segGap = 0.04;
+    const totalArc = Math.PI*2 - segGap*numWeeks;
+    const segArc = totalArc/numWeeks;
+
+    for(let w=0;w<numWeeks;w++){
+      const sa = -Math.PI/2 + w*(segArc+segGap) + segGap/2;
+      const ea = sa + segArc;
+      const isCurrent = w===currentWeek;
+      const isElapsed = w<currentWeek;
+      const isHovWk = hovMoWk===w;
+
+      const fill = isHovWk ? 'rgba(60,80,100,'+bA(0.5)+')' : 'rgba(30,45,65,'+bA(0.35)+')';
+      const stroke = isHovWk ? 'rgba(140,170,200,'+bA(0.5)+')' : null;
+      drawArc(sa,ea,monthRingInner,monthRingOuter,fill,stroke,isHovWk?1.5:0);
+
+      if(isElapsed||isCurrent){
+        const recency = isCurrent ? 1 : (w/Math.max(1,currentWeek));
+        const glowA = bA(0.08+recency*0.15);
+        ctx.save();
+        ctx.shadowColor='rgba(212,132,90,'+bA(0.1+recency*0.3)+')';
+        ctx.shadowBlur=(3+recency*8)*outerBright;
+        drawArc(sa,ea,monthRingInner+1,monthRingOuter-1,'rgba(212,132,90,'+glowA+')',null);
+        ctx.restore();
+      }
+
+      if(isCurrent){
+        const midA=(sa+ea)/2;
+        const sp1=p2c(midA,monthRingInner-6),sp2=p2c(midA,monthRingOuter+6);
+        ctx.beginPath();ctx.moveTo(sp1.x,sp1.y);ctx.lineTo(sp2.x,sp2.y);
+        ctx.strokeStyle='rgba(212,132,90,'+bA(0.7)+')';ctx.lineWidth=1.5;ctx.stroke();
+        const nd3=p2c(midA,(monthRingInner+monthRingOuter)/2);
+        ctx.beginPath();ctx.arc(nd3.x,nd3.y,3,0,Math.PI*2);ctx.fillStyle='rgba(212,132,90,'+bA(1)+')';ctx.fill();
+      }
+
+      // Week label
+      const midA=(sa+ea)/2;
+      const lp=p2c(midA,monthLabelR);
+      ctx.save();ctx.translate(lp.x,lp.y);
+      let rot=midA+Math.PI/2;while(rot>Math.PI)rot-=Math.PI*2;
+      if(rot>Math.PI/2||rot<-Math.PI/2)rot+=Math.PI;
+      ctx.rotate(rot);
+      ctx.font="9px 'Share Tech Mono',monospace";
+      ctx.fillStyle='rgba(140,170,200,'+bA(isCurrent?0.9:0.6)+')';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const moShort=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month];
+      const weekEmojis=['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣'];
+      ctx.fillText(weekEmojis[w]+' '+moShort+' '+weekLabels[w],0,0);
+      ctx.restore();
+
+    }
+  }
+
+  // ═══ YEAR RING (12 months) ═══
+  {
+    const lisbonNow = new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const currentMonth = lisbonNow.getMonth(); // 0-11
+    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const monthEmojis = ['❄️','🌥️','🌱','🌸','🌿','☀️','🥵','🏖️','🍁','🎃','🌧️','🌨️'];
+    const segGap = 0.025;
+    const totalArc = Math.PI*2 - segGap*12;
+    const segArc = totalArc/12;
+
+    for(let m=0;m<12;m++){
+      const sa = -Math.PI/2 + m*(segArc+segGap) + segGap/2;
+      const ea = sa + segArc;
+      const isCurrent = m===currentMonth;
+      const isElapsed = m<currentMonth;
+      const isHovMo = hovYrMo===m;
+
+      const fill = isHovMo ? 'rgba(60,80,100,'+bA(0.5)+')' : 'rgba(30,45,65,'+bA(0.35)+')';
+      const stroke = isHovMo ? 'rgba(140,170,200,'+bA(0.5)+')' : null;
+      drawArc(sa,ea,yearRingInner,yearRingOuter,fill,stroke,isHovMo?1.5:0);
+
+      if(isElapsed||isCurrent){
+        const recency = isCurrent ? 1 : (m/Math.max(1,currentMonth));
+        const glowA = bA(0.08+recency*0.12);
+        ctx.save();
+        ctx.shadowColor='rgba(212,132,90,'+bA(0.1+recency*0.25)+')';
+        ctx.shadowBlur=(3+recency*6)*outerBright;
+        drawArc(sa,ea,yearRingInner+1,yearRingOuter-1,'rgba(212,132,90,'+glowA+')',null);
+        ctx.restore();
+      }
+
+      if(isCurrent){
+        const midA=(sa+ea)/2;
+        const sp1=p2c(midA,yearRingInner-6),sp2=p2c(midA,yearRingOuter+6);
+        ctx.beginPath();ctx.moveTo(sp1.x,sp1.y);ctx.lineTo(sp2.x,sp2.y);
+        ctx.strokeStyle='rgba(212,132,90,'+bA(0.7)+')';ctx.lineWidth=1.5;ctx.stroke();
+        const nd4=p2c(midA,(yearRingInner+yearRingOuter)/2);
+        ctx.beginPath();ctx.arc(nd4.x,nd4.y,3,0,Math.PI*2);ctx.fillStyle='rgba(212,132,90,'+bA(1)+')';ctx.fill();
+      }
+
+      // Month label
+      const midA=(sa+ea)/2;
+      const lp=p2c(midA,yearLabelR);
+      ctx.save();ctx.translate(lp.x,lp.y);
+      let rot=midA+Math.PI/2;while(rot>Math.PI)rot-=Math.PI*2;
+      if(rot>Math.PI/2||rot<-Math.PI/2)rot+=Math.PI;
+      ctx.rotate(rot);
+      ctx.font="10px 'Share Tech Mono',monospace";
+      ctx.fillStyle='rgba(140,170,200,'+bA(isCurrent?0.9:0.6)+')';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(monthEmojis[m]+' '+monthNames[m]+' '+lisbonNow.getFullYear(),0,0);
+      ctx.restore();
+
+    }
+  }
+
+  // ═══ CRON MARKERS + SWEEPING ARC CONNECTIONS ═══
+  const arcR=(entityOuterR+timeRingInner)/2; // radius for sweeping arcs to today ring
+  cronJobs.forEach(job=>{
+    const ja=t2a(job.hour,job.minute);const ent=segMap[job.entityId];if(!ent)return;
+
+    // Is this job or its entity hovered?
+    const isEntHovered=hoverSeg&&hoverSeg.id===job.entityId;
+    const isCronHovered=hoverCron&&hoverCron===job;
+    const isHighlighted=isEntHovered||isCronHovered;
+    const isAnyHover=hoverSeg!==null||hoverCron!==null;
+
+    // Proximity to current time
+    const tf=(job.hour+job.minute/60)/24,nf=(lisbon.h+lisbon.m/60)/24;
+    let diff=Math.abs(tf-nf);if(diff>0.5)diff=1-diff;
+    const prox=Math.max(0,1-diff*24*2);
+
+    // Arc alpha based on hover state (brightness-adjusted for outer rings)
+    let arcAlpha;
+    if(isHighlighted) arcAlpha=bA(0.65);
+    else if(isAnyHover) arcAlpha=bA(0.06);
+    else arcAlpha=bA(0.18+prox*0.35);
+
+    // ── Sweeping arc from entity to time marker ──
+    // Both points sit at arcR radius, we draw an arc between the two angles
+    const entAngle=ent.midAngle;
+    const jobAngle=ja;
+
+    // Determine shortest vs going-around direction
+    // We always go the short way
+    let startA=entAngle, endA=jobAngle;
+    let delta=endA-startA;
+    while(delta>Math.PI)delta-=Math.PI*2;
+    while(delta<-Math.PI)delta+=Math.PI*2;
+    const ccw=delta<0;
+
+    // Draw the arc in the label zone
+    ctx.beginPath();
+    if(ccw){
+      ctx.arc(cxc,cyc,arcR,startA,startA+delta,true);
+    }else{
+      ctx.arc(cxc,cyc,arcR,startA,startA+delta,false);
+    }
+    ctx.strokeStyle=h2r(ent.color,arcAlpha);
+    ctx.lineWidth=isHighlighted?2:(1+prox*1.5);
+    ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+
+    // Short radial ticks connecting arc to entity segment and to time ring
+    // Entity end: from entityOuterR to arcR
+    const ep1=p2c(entAngle,entityOuterR+2),ep2=p2c(entAngle,arcR);
+    ctx.beginPath();ctx.moveTo(ep1.x,ep1.y);ctx.lineTo(ep2.x,ep2.y);
+    ctx.strokeStyle=h2r(ent.color,arcAlpha*0.8);ctx.lineWidth=isHighlighted?1.5:1;
+    ctx.stroke();
+    // Time ring end: from arcR to timeRingInner
+    const tp1=p2c(jobAngle,arcR),tp2=p2c(jobAngle,timeRingInner-2);
+    ctx.beginPath();ctx.moveTo(tp1.x,tp1.y);ctx.lineTo(tp2.x,tp2.y);
+    ctx.strokeStyle=h2r(ent.color,arcAlpha*0.8);ctx.lineWidth=isHighlighted?1.5:1;
+    ctx.stroke();
+
+    // ── Cron marker dot on time ring ──
+    const mp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+    const jg=ctx.createRadialGradient(mp.x,mp.y,0,mp.x,mp.y,16);
+    jg.addColorStop(0,h2r(ent.color,isHighlighted?0.5:0.35));jg.addColorStop(1,h2r(ent.color,0));
+    ctx.fillStyle=jg;ctx.beginPath();ctx.arc(mp.x,mp.y,16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(mp.x,mp.y,isHighlighted?6:5,0,Math.PI*2);
+    ctx.fillStyle=h2r(ent.color,0.9);ctx.fill();
+
+    // ── Radar pulse when highlighted ──
+    if(isHighlighted){
+      const t=Date.now();
+      for(let w=0;w<3;w++){
+        const phase=((t/1000+w*0.33)%1); // 3 waves staggered
+        const r=6+phase*30;
+        const a=1-phase;
+        ctx.beginPath();ctx.arc(mp.x,mp.y,r,0,Math.PI*2);
+        ctx.strokeStyle=h2r(ent.color,a*0.6);ctx.lineWidth=2-phase*1.5;ctx.stroke();
+      }
+    }
+
+    // Labels removed — tooltip on hover provides details
+  });
+
+  // ═══ HEARTBEAT TICKS + FACE CONNECTIONS ═══
+  var hbArcR=arcR;
+  heartbeats.forEach(function(hb){
+    var ja=t2a(hb.hour,hb.minute);
+    var ent=segMap[hb.entityId];
+    if(!ent)return;
+
+    var isEntHov=hoverSeg&&hoverSeg.id===hb.entityId;
+    var isThisHov=hoverCron&&hoverCron===hb;
+    var isLit=isEntHov||isThisHov;
+    var anyHov=hoverSeg!==null||hoverCron!==null;
+
+    var hbAlpha;
+    if(isLit) hbAlpha=bA(0.65);
+    else if(anyHov) hbAlpha=bA(0.06);
+    else hbAlpha=bA(0.18);
+
+    // Dot on time ring (same as cron markers)
+    var hbMp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+    var hbg=ctx.createRadialGradient(hbMp.x,hbMp.y,0,hbMp.x,hbMp.y,16);
+    hbg.addColorStop(0,h2r(ent.color,isLit?0.5:0.35));hbg.addColorStop(1,h2r(ent.color,0));
+    ctx.fillStyle=hbg;ctx.beginPath();ctx.arc(hbMp.x,hbMp.y,16,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(hbMp.x,hbMp.y,isLit?6:5,0,Math.PI*2);
+    ctx.fillStyle=h2r(ent.color,0.9);ctx.fill();
+
+    // Radar pulse when highlighted
+    if(isLit){
+      var ht=Date.now();
+      for(var w=0;w<3;w++){
+        var phase=((ht/1000+w*0.33)%1);
+        var hr=6+phase*30;
+        var ha=1-phase;
+        ctx.beginPath();ctx.arc(hbMp.x,hbMp.y,hr,0,Math.PI*2);
+        ctx.strokeStyle=h2r(ent.color,ha*0.6);ctx.lineWidth=2-phase*1.5;ctx.stroke();
+      }
+    }
+
+    // Sweeping arc to Face entity
+    var entAngle=ent.midAngle;
+    var delta=ja-entAngle;
+    while(delta>Math.PI)delta-=Math.PI*2;
+    while(delta<-Math.PI)delta+=Math.PI*2;
+
+    ctx.beginPath();
+    ctx.arc(cxc,cyc,hbArcR,entAngle,entAngle+delta,delta<0);
+    ctx.strokeStyle=h2r(ent.color,hbAlpha);
+    ctx.lineWidth=isLit?2:1;
+    ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+
+    // Radial ticks
+    var re1=p2c(entAngle,entityOuterR+2),re2=p2c(entAngle,hbArcR);
+    ctx.beginPath();ctx.moveTo(re1.x,re1.y);ctx.lineTo(re2.x,re2.y);
+    ctx.strokeStyle=h2r(ent.color,hbAlpha*0.8);ctx.lineWidth=isLit?1.5:1;ctx.stroke();
+
+    var rt1=p2c(ja,hbArcR),rt2=p2c(ja,timeRingInner-2);
+    ctx.beginPath();ctx.moveTo(rt1.x,rt1.y);ctx.lineTo(rt2.x,rt2.y);
+    ctx.strokeStyle=h2r(ent.color,hbAlpha*0.8);ctx.lineWidth=isLit?1.5:1;ctx.stroke();
+  });
+
+  // ═══ INTER-RING CONNECTIONS (source → table, between mini-rings) ═══
+  innerRelationships.forEach(rel => {
+    const [si, ti, type, str] = rel; const src = segMap[si], tgt = segMap[ti]; if (!src || !tgt) return;
+    const cronEntId = hoverCron ? hoverCron.entityId : null;
+    const isH = (hoverSeg && (hoverSeg.id === si || hoverSeg.id === ti)) || (cronEntId && (cronEntId === si || cronEntId === ti));
+    const isAH = hoverSeg !== null || hoverCron !== null;
+    let alpha = isAH ? (isH ? 0.55 : 0.025) : 0.2;
+    const col = src.color;
+    // Get world positions on the edge of each mini-ring
+    const pt1 = p2cAt(src.ringCenter.x, src.ringCenter.y, src.midAngle, miniRingR);
+    const pt2 = p2cAt(tgt.ringCenter.x, tgt.ringCenter.y, tgt.midAngle, miniRingR);
+    // Curved connection through midpoint between the two ring centers
+    const mx = (src.ringCenter.x + tgt.ringCenter.x) / 2;
+    const my = (src.ringCenter.y + tgt.ringCenter.y) / 2;
+    // Pull control point toward canvas center for a nice curve
+    const cpx = mx * 0.6 + cxc * 0.4;
+    const cpy = my * 0.6 + cyc * 0.4;
+    ctx.beginPath(); ctx.moveTo(pt1.x, pt1.y); ctx.quadraticCurveTo(cpx, cpy, pt2.x, pt2.y);
+    ctx.strokeStyle = h2r(col, alpha); ctx.lineWidth = isH ? str * 1.2 : str * 0.7;
+    ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+    // Pulse waves along bezier
+    const iPulsePeriod = 14;
+    const iTNow = Date.now() / 1000;
+    const iRelIdx = innerRelationships.indexOf(rel);
+    const phase = ((iTNow / iPulsePeriod + iRelIdx * 0.073) % 1);
+    const u = 1 - phase, t2 = phase;
+    const px = u*u*pt1.x + 2*u*t2*cpx + t2*t2*pt2.x;
+    const py = u*u*pt1.y + 2*u*t2*cpy + t2*t2*pt2.y;
+    const pAlpha = isH ? 0.7 : (isAH ? 0.04 : 0.25);
+    const pR = isH ? 4.5 : 3;
+    const pg = ctx.createRadialGradient(px, py, 0, px, py, pR * 3);
+    pg.addColorStop(0, h2r(col, pAlpha));
+    pg.addColorStop(1, h2r(col, 0));
+    ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(px, py, pR * 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, pR * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = h2r(col, pAlpha * 1.2); ctx.fill();
+  });
+
+  // ═══ CROSS-RING CONNECTIONS (entity ↔ table + entity ↔ entity) ═══
+  crossRingRelationships.forEach(rel => {
+    const [si, ti, type, str] = rel; const src = segMap[si], tgt = segMap[ti]; if (!src || !tgt) return;
+    const isO = type === 'owns' || type === 'bidi';
+    const cronEntId = hoverCron ? hoverCron.entityId : null;
+    const isH = (hoverSeg && (hoverSeg.id === si || hoverSeg.id === ti)) || (cronEntId && (cronEntId === si || cronEntId === ti));
+    const isAH = hoverSeg !== null || hoverCron !== null;
+    const col = isO ? src.color : tgt.color;
+
+    let arcAlpha;
+    if (isH) arcAlpha = 0.65;
+    else if (isAH) arcAlpha = 0.06;
+    else arcAlpha = isO ? 0.22 : 0.15;
+
+    const bothOuter = outerIds.has(si) && outerIds.has(ti);
+
+    if (bothOuter) {
+      // Entity↔entity: sweeping arc just inside entity ring (unchanged)
+      const srcAngle = src.midAngle, tgtAngle = tgt.midAngle;
+      let delta = tgtAngle - srcAngle;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      const thisArcR = entityInnerR - 20;
+      ctx.beginPath(); ctx.arc(cxc, cyc, thisArcR, srcAngle, srcAngle + delta, delta < 0);
+      ctx.strokeStyle = h2r(col, arcAlpha); ctx.lineWidth = isH ? 2 : 1.5;
+      ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+      // Radial ticks
+      const srcR = entityInnerR - 2, tgtR = entityInnerR - 2;
+      ctx.setLineDash([4, 3]);
+      const sp1 = p2c(srcAngle, srcR), sp2 = p2c(srcAngle, thisArcR);
+      ctx.beginPath(); ctx.moveTo(sp1.x, sp1.y); ctx.lineTo(sp2.x, sp2.y);
+      ctx.strokeStyle = h2r(col, arcAlpha * 0.8); ctx.lineWidth = isH ? 1.5 : 1; ctx.stroke();
+      const tp1 = p2c(tgtAngle, tgtR), tp2 = p2c(tgtAngle, thisArcR);
+      ctx.beginPath(); ctx.moveTo(tp1.x, tp1.y); ctx.lineTo(tp2.x, tp2.y);
+      ctx.strokeStyle = h2r(col, arcAlpha * 0.8); ctx.lineWidth = isH ? 1.5 : 1; ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Glow dot + pulse wave along arc
+      const dp = p2c(tgtAngle, tgtR);
+      const dg = ctx.createRadialGradient(dp.x, dp.y, 0, dp.x, dp.y, 10);
+      dg.addColorStop(0, h2r(col, isH ? 0.4 : 0.2)); dg.addColorStop(1, h2r(col, 0));
+      ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(dp.x, dp.y, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(dp.x, dp.y, isH ? 3.5 : 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = h2r(col, isH ? 0.9 : 0.5); ctx.fill();
+
+      // Pulse wave along arc
+      const tNow = Date.now() / 1000;
+      const cRelIdx = crossRingRelationships.indexOf(rel);
+      const rawPhase = ((tNow / 12.0 + cRelIdx * 0.061) % 1);
+      const phase = isO ? rawPhase : (1 - rawPhase);
+      const radLen = Math.abs(thisArcR - srcR);
+      const arcLen = Math.abs(delta) * thisArcR;
+      const totalLen = radLen * 2 + arcLen;
+      const s1 = radLen / totalLen, s2 = (radLen + arcLen) / totalLen;
+      let pulsePos;
+      if (phase < s1) { pulsePos = p2c(srcAngle, srcR + (thisArcR - srcR) * (phase / s1)); }
+      else if (phase < s2) { pulsePos = p2c(srcAngle + delta * ((phase - s1) / (s2 - s1)), thisArcR); }
+      else { pulsePos = p2c(tgtAngle, thisArcR + (tgtR - thisArcR) * ((phase - s2) / (1 - s2))); }
+      const pulseAlpha = isH ? 0.7 : (isAH ? 0.04 : 0.3);
+      const pulseRad = isH ? 5 : 3.5;
+      const ppg = ctx.createRadialGradient(pulsePos.x, pulsePos.y, 0, pulsePos.x, pulsePos.y, pulseRad * 3);
+      ppg.addColorStop(0, h2r(col, pulseAlpha)); ppg.addColorStop(1, h2r(col, 0));
+      ctx.fillStyle = ppg; ctx.beginPath(); ctx.arc(pulsePos.x, pulsePos.y, pulseRad * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(pulsePos.x, pulsePos.y, pulseRad * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = h2r(col, pulseAlpha * 1.2); ctx.fill();
+
+    } else {
+      // Entity ↔ mini-ring table: Manhattan right-angle routed connection
+      const entitySeg = outerIds.has(si) ? src : tgt;
+      const tableSeg = outerIds.has(si) ? tgt : src;
+      const rc = tableSeg.ringCenter;
+
+      // Entity endpoint: on inner edge of entity ring
+      const ep = p2c(entitySeg.midAngle, entityInnerR - 2);
+      // Table endpoint: on outer edge of its mini-ring
+      const tp = p2cAt(rc.x, rc.y, tableSeg.midAngle, miniRingR + 2);
+
+      // Radial inward point from entity (move toward center along entity's radial)
+      const radialDist = 55;
+      const rp = p2c(entitySeg.midAngle, entityInnerR - 2 - radialDist);
+      // Radial outward point from mini-ring (move away from mini-ring center along table's radial)
+      const ap = p2cAt(rc.x, rc.y, tableSeg.midAngle, miniRingR + 2 + 30);
+
+      // Draw 3-segment path: radial out from entity → horizontal/diagonal bridge → radial into mini-ring
+      ctx.beginPath();
+      ctx.moveTo(ep.x, ep.y);
+      ctx.lineTo(rp.x, rp.y);
+      ctx.lineTo(ap.x, ap.y);
+      ctx.lineTo(tp.x, tp.y);
+      ctx.strokeStyle = h2r(col, arcAlpha); ctx.lineWidth = isH ? 1.8 : 1;
+      ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+      // Glow dot at table endpoint
+      const dg = ctx.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, 8);
+      dg.addColorStop(0, h2r(col, isH ? 0.35 : 0.15)); dg.addColorStop(1, h2r(col, 0));
+      ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(tp.x, tp.y, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(tp.x, tp.y, isH ? 3 : 2, 0, Math.PI * 2);
+      ctx.fillStyle = h2r(col, isH ? 0.8 : 0.4); ctx.fill();
+
+      // Pulse wave along 3-segment path
+      const tNow = Date.now() / 1000;
+      const cRelIdx = crossRingRelationships.indexOf(rel);
+      const pulsePeriod = isO ? 12.0 : 14.0;
+      const rawPhase = ((tNow / pulsePeriod + cRelIdx * 0.061) % 1);
+      const phase = isO ? rawPhase : (1 - rawPhase);
+      // Calculate segment lengths
+      const len1 = Math.sqrt((rp.x-ep.x)**2 + (rp.y-ep.y)**2);
+      const len2 = Math.sqrt((ap.x-rp.x)**2 + (ap.y-rp.y)**2);
+      const len3 = Math.sqrt((tp.x-ap.x)**2 + (tp.y-ap.y)**2);
+      const totalLen = len1 + len2 + len3;
+      const s1 = len1/totalLen, s2 = (len1+len2)/totalLen;
+      let px, py;
+      if (phase < s1) {
+        const f = phase / s1;
+        px = ep.x + (rp.x-ep.x)*f; py = ep.y + (rp.y-ep.y)*f;
+      } else if (phase < s2) {
+        const f = (phase-s1) / (s2-s1);
+        px = rp.x + (ap.x-rp.x)*f; py = rp.y + (ap.y-rp.y)*f;
+      } else {
+        const f = (phase-s2) / (1-s2);
+        px = ap.x + (tp.x-ap.x)*f; py = ap.y + (tp.y-ap.y)*f;
+      }
+      const pulseAlpha = isH ? 0.7 : (isAH ? 0.04 : 0.25);
+      const pulseRad = isH ? 5 : 3.5;
+      const ppg = ctx.createRadialGradient(px, py, 0, px, py, pulseRad * 3);
+      ppg.addColorStop(0, h2r(col, pulseAlpha)); ppg.addColorStop(1, h2r(col, 0));
+      ctx.fillStyle = ppg; ctx.beginPath(); ctx.arc(px, py, pulseRad * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, pulseRad * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = h2r(col, pulseAlpha * 1.2); ctx.fill();
+    }
+  });
+
+
+  // ═══ TRIANGLE MINI-RINGS ═══
+  miniRings.forEach((ring, ri) => {
+    const rc = ring.center;
+    
+    // Draw subtle guide circle for mini-ring
+    ctx.beginPath(); ctx.arc(rc.x, rc.y, miniRingInnerR - 10, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(212,132,90,0.04)'; ctx.lineWidth = 0.5; ctx.stroke();
+    
+    // Ring label at center
+    ctx.font = "8px 'Share Tech Mono',monospace";
+    ctx.fillStyle = h2r(ring.color, 0.35);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(ring.label, rc.x, rc.y);
+    
+    // Draw segments
+    ring.segs.forEach(seg => {
+      const cronEntId2 = hoverCron ? hoverCron.entityId : null;
+      const isH = (hoverSeg && hoverSeg.id === seg.id) || (cronEntId2 && cronEntId2 === seg.id);
+      const isAH = hoverSeg !== null || hoverCron !== null;
+      const fa = isH ? 0.45 : (isAH ? 0.12 : 0.22); const sa = isH ? 0.9 : (isAH ? 0.2 : 0.55);
+      drawArcAt(rc.x, rc.y, seg.startAngle, seg.endAngle, miniRingInnerR, miniRingR, h2r(seg.color, fa), h2r(seg.color, sa), 1);
+      
+      // Label — well inside the ring
+      const labelR = miniRingInnerR - 30;
+      const lp = p2cAt(rc.x, rc.y, seg.midAngle, labelR);
+      ctx.save(); ctx.translate(lp.x, lp.y);
+      let tangent = seg.midAngle + Math.PI / 2;
+      while (tangent > Math.PI) tangent -= Math.PI * 2;
+      while (tangent < -Math.PI) tangent += Math.PI * 2;
+      if (tangent > Math.PI / 2 || tangent < -Math.PI / 2) tangent += Math.PI;
+      ctx.rotate(tangent);
+      const fontSize = 8;
+      ctx.font = fontSize + "px 'Share Tech Mono',monospace";
+      ctx.fillStyle = h2r(seg.color, isH ? 1 : (isAH ? 0.4 : 0.8));
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const lines = seg.name.split('_');
+      const lineH = fontSize + 2;
+      const totalH = (lines.length - 1) * lineH;
+      lines.forEach((line, li) => {
+        ctx.fillText(line, 0, -totalH / 2 + li * lineH);
+      });
+      ctx.restore();
+    });
+  });
+
+  // ═══ OUTER RING SEGMENTS ═══
+  outerSegments.forEach(seg => {
+    const cronEntId2 = hoverCron ? hoverCron.entityId : null;
+    const isH = (hoverSeg && hoverSeg.id === seg.id) || (cronEntId2 && cronEntId2 === seg.id);
+    const isAH = hoverSeg !== null || hoverCron !== null;
+    const fa = isH ? 0.45 : (isAH ? 0.12 : 0.22); const sa = isH ? 0.9 : (isAH ? 0.2 : 0.55);
+    drawArc(seg.startAngle, seg.endAngle, entityInnerR, entityOuterR, h2r(seg.color, fa), h2r(seg.color, sa), 1);
+
+    // ── Heartbeat pulse (lub-dub) ──
+    // Each entity gets a staggered phase based on its index
+    if (!isAH) { // Only pulse when nothing is hovered (keep it calm)
+      const segIdx = outerSegments.indexOf(seg);
+      const hbPeriod = 3.0; // seconds per full heartbeat cycle
+      const tNow = Date.now() / 1000;
+      const phase = ((tNow / hbPeriod + segIdx * 0.17) % 1); // stagger by ~17% per entity
+
+      // Double-pulse shape: two bumps in the first 40% of cycle, rest is quiet
+      // Lub: 0.00-0.12, Dub: 0.18-0.30, Rest: 0.30-1.00
+      let pulseIntensity = 0;
+      if (phase < 0.12) {
+        pulseIntensity = Math.sin(phase / 0.12 * Math.PI); // lub
+      } else if (phase >= 0.18 && phase < 0.30) {
+        pulseIntensity = Math.sin((phase - 0.18) / 0.12 * Math.PI) * 0.6; // dub (weaker)
+      }
+
+      if (pulseIntensity > 0.01) {
+        // Expanding glow ring from the entity arc
+        const pulseR = entityOuterR + 2 + pulseIntensity * 18;
+        const pulseAlpha = pulseIntensity * 0.25;
+        ctx.beginPath();
+        ctx.arc(cxc, cyc, pulseR, seg.startAngle, seg.endAngle);
+        ctx.strokeStyle = h2r(seg.color, pulseAlpha);
+        ctx.lineWidth = 2 - pulseIntensity * 0.8;
+        ctx.stroke();
+
+        // Subtle inner glow on the segment itself
+        ctx.save();
+        ctx.shadowColor = h2r(seg.color, pulseIntensity * 0.4);
+        ctx.shadowBlur = pulseIntensity * 12;
+        drawArc(seg.startAngle, seg.endAngle, entityInnerR, entityOuterR, h2r(seg.color, pulseIntensity * 0.08), null, 0);
+        ctx.restore();
+      }
+    }
+
+    // Child bars
+    seg.childAngles.forEach(child => {
+      drawArc(child.angle - 0.008, child.angle + 0.008, entityOuterR + 1, entityChildOuterR, h2r('#4acaaa', isH ? 0.7 : 0.35), null);
+      if (isH) {
+        const cp = p2c(child.angle, entityChildOuterR + 8); ctx.save(); ctx.translate(cp.x, cp.y);
+        let rot = child.angle; const isR = rot > -Math.PI / 2 && rot < Math.PI / 2; if (!isR) rot += Math.PI;
+        ctx.rotate(rot); ctx.font = "9px 'Share Tech Mono',monospace"; ctx.fillStyle = h2r('#4acaaa', 0.7);
+        ctx.textAlign = isR ? 'left' : 'right'; ctx.textBaseline = 'middle'; ctx.fillText(child.name, 0, 0); ctx.restore();
+      }
+    });
+    
+    // Label — horizontal, split on '_', tangent to arc
+    const labelMidR = entityLabelStart + 12;
+    const lp = p2c(seg.midAngle, labelMidR);
+    ctx.save(); ctx.translate(lp.x, lp.y);
+    let tangent = seg.midAngle + Math.PI / 2;
+    while (tangent > Math.PI) tangent -= Math.PI * 2;
+    while (tangent < -Math.PI) tangent += Math.PI * 2;
+    if (tangent > Math.PI / 2 || tangent < -Math.PI / 2) tangent += Math.PI;
+    ctx.rotate(tangent);
+    const displayName = getDisplayName(seg);
+    const fontSize = seg.type === 'entity' ? 11 : 9;
+    ctx.font = (seg.type === 'entity' ? '500 ' : '') + fontSize + "px 'Share Tech Mono',monospace";
+    ctx.fillStyle = h2r(seg.color, isH ? 1 : (isAH ? 0.4 : 0.8));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const lines = displayName.split('_');
+    const lineH = fontSize + 2;
+    const totalH = (lines.length - 1) * lineH;
+    lines.forEach((line, li) => {
+      ctx.fillText(line, 0, -totalH / 2 + li * lineH);
+    });
+    ctx.restore();
+  });
+
+  // ═══ hOS DIMENSION RINGS (outside time ring) ═══
+  if (hosSections.length > 0) {
+    // Muted FUI palette — desaturate hOS colors to match society aesthetic
+    function hosCol(hex, a) {
+      // Desaturate: blend toward grey, then apply brightness
+      let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      const grey = (r + g + b) / 3;
+      r = Math.round(r * 0.6 + grey * 0.4);
+      g = Math.round(g * 0.6 + grey * 0.4);
+      b = Math.round(b * 0.6 + grey * 0.4);
+      return `rgba(${r},${g},${b},${bA(a)})`;
+    }
+
+    hosSections.forEach(sec => {
+      const catColor = sec.color || '#5a6a7a';
+
+      // Outer ring: hOS category arcs
+      const isCatHov2 = hovHosCat === sec;
+      const anyHosHov2 = hovHosDim !== null || hovHosCat !== null;
+      const catDimmed2 = anyHosHov2 && !isCatHov2 && !sec.dimensions.some(d => d === hovHosDim);
+      const catFillA = catDimmed2 ? 0.05 : (isCatHov2 ? 0.3 : 0.12);
+      const catStrokeA = catDimmed2 ? 0.12 : (isCatHov2 ? 0.7 : 0.35);
+      if (!sec.unmapped) {
+        drawArc(sec.startAngle, sec.endAngle, hosCatR1, hosCatR2, hosCol(catColor, catFillA), hosCol(catColor, catStrokeA), isCatHov2 ? 1.5 : 1);
+        // Category label
+        const midA = (sec.startAngle + sec.endAngle) / 2;
+        const lp = p2c(midA, hosCatLabelR);
+        ctx.save(); ctx.translate(lp.x, lp.y);
+        ctx.font = "600 22px 'Rajdhani',sans-serif";
+        ctx.fillStyle = hosCol(catColor, 0.75);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(sec.category.name.toUpperCase(), 0, 0);
+        ctx.restore();
+      } else {
+        // Unmapped (Individual): render like other categories
+        drawArc(sec.startAngle, sec.endAngle, hosCatR1, hosCatR2, hosCol(catColor, catFillA), hosCol(catColor, catStrokeA), isCatHov2 ? 1.5 : 1);
+        const midA = (sec.startAngle + sec.endAngle) / 2;
+        const lp = p2c(midA, hosCatLabelR);
+        ctx.save(); ctx.translate(lp.x, lp.y);
+        ctx.font = "600 22px 'Rajdhani',sans-serif";
+        ctx.fillStyle = hosCol(catColor, 0.75);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('INDIVIDUAL', 0, 0);
+        ctx.restore();
+      }
+
+      // Middle ring: SMind dimension arcs
+      sec.dimensions.forEach(dim => {
+        const col = dim.statusColor;
+        const isDimHov = hovHosDim === dim;
+        const isCatHov = hovHosCat === sec;
+        const anyHosHov = hovHosDim !== null || hovHosCat !== null;
+        const dimDimmed = anyHosHov && !isDimHov && !isCatHov;
+        const dimFillA = dimDimmed ? 0.04 : (isDimHov ? 0.35 : 0.1);
+        const dimStrokeA = dimDimmed ? 0.12 : (isDimHov ? 0.8 : 0.3);
+        drawArc(dim.startAngle, dim.endAngle, hosDimR1, hosDimR2, hosCol(col, dimFillA), hosCol(col, dimStrokeA), isDimHov ? 1.5 : 0.8);
+
+        // Dimension label — adaptive: full label if wide, abbreviated if medium, hover-only if narrow
+        const arcSpan = dim.endAngle - dim.startAngle;
+        const showLabel = isDimHov || arcSpan > 0.035;
+        if (showLabel) {
+          const lp = p2c(dim.midAngle, (hosDimR1 + hosDimR2) / 2);
+          ctx.save(); ctx.translate(lp.x, lp.y);
+          let rot = dim.midAngle + Math.PI / 2;
+          while (rot > Math.PI) rot -= Math.PI * 2;
+          if (rot > Math.PI / 2 || rot < -Math.PI / 2) rot += Math.PI;
+          ctx.rotate(rot);
+          const fontSize = isDimHov ? 8 : (arcSpan > 0.1 ? 7 : 5);
+          const alpha = isDimHov ? 0.85 : (arcSpan > 0.1 ? 0.55 : 0.3);
+          ctx.font = fontSize + "px 'Share Tech Mono',monospace";
+          ctx.fillStyle = hosCol(col, alpha);
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          // For narrow arcs, abbreviate to initials or first word
+          let displayName = dim.name;
+          if (!isDimHov && arcSpan <= 0.1) {
+            // Use first word or abbreviation
+            const words = dim.name.split(/[\s&]+/);
+            displayName = words[0].length <= 8 ? words[0] : words[0].slice(0, 6) + '…';
+          }
+          const words = displayName.split(/[\s_]+/);
+          const lh = fontSize + 1;
+          const maxChars = isDimHov ? 16 : (arcSpan > 0.1 ? 12 : 8);
+          const lines = []; let cur = '';
+          words.forEach(w => { if (cur && (cur + ' ' + w).length > maxChars) { lines.push(cur); cur = w; } else { cur = cur ? cur + ' ' + w : w; } });
+          if (cur) lines.push(cur);
+          const maxLines = isDimHov ? 4 : (arcSpan > 0.1 ? 3 : 1);
+          const show = lines.slice(0, maxLines);
+          const th = (show.length - 1) * lh;
+          show.forEach((l, i) => ctx.fillText(l, 0, -th / 2 + i * lh));
+          ctx.restore();
+        }
+
+        // Sub-dimension ring (innermost thin arcs)
+        if (dim.subDims && dim.subDims.length > 0) {
+          const subArc = (dim.endAngle - dim.startAngle) / dim.subDims.length;
+          const subGap = 0.005;
+          dim.subDims.forEach((sub, si) => {
+            const sa = dim.startAngle + si * subArc + subGap / 2;
+            const ea = dim.startAngle + (si + 1) * subArc - subGap / 2;
+            sub._sa = sa; sub._ea = ea; sub._dim = dim;
+            const isSubHov = currentHovGoal === sub;
+            const subCol = sub.covered ? '#4acaaa' : '#ca4a4a';
+            const subFillA = dimDimmed ? 0.03 : (isSubHov ? 0.4 : (isDimHov ? 0.25 : 0.08));
+            const subStrokeA = dimDimmed ? 0.08 : (isSubHov ? 0.9 : (isDimHov ? 0.6 : 0.25));
+            drawArc(sa, ea, hosSubDimR1, hosSubDimR2, hosCol(subCol, subFillA), hosCol(subCol, subStrokeA), isSubHov ? 1.5 : 0.5);
+          });
+        }
+
+      });
+
+      // Empty category — faint placeholder
+      if (!sec.unmapped && sec.dimensions.length === 0) {
+        drawArc(sec.startAngle, sec.endAngle, hosDimR1, hosDimR2, 'rgba(30,40,55,0.15)', hosCol(catColor, 0.12), 0.5);
+      }
+    });
+  }
+
+  // ═══ HALO — Rehoboam-style morphing crown-of-thorns ring ═══
+  // Animation: thorns grow from smooth circle to full chaos, then dissolve back. Repeating cycle.
+  if (hosSections.length > 0) {
+    const haloR = hosCatR2 + 16;
+    const haloBand = 8;
+    const haloCol = [38, 52, 68];
+    const haloAlpha = bA(0.6);
+    const tSec = Date.now() / 1000;
+
+    // Cycle: 8 seconds total. 0→1 = thorns grow, 1→0 = thorns dissolve
+    const cyclePeriod = 8.0;
+    const rawPhase = (tSec % cyclePeriod) / cyclePeriod; // 0→1 linear
+    // Smooth triangle wave: 0→1→0 (grow then dissolve)
+    const intensity = rawPhase < 0.5 ? rawPhase * 2 : (1 - rawPhase) * 2;
+    // Ease for organic feel
+    const ease = intensity * intensity * (3 - 2 * intensity); // smoothstep
+
+    function haloHash(n) {
+      const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    }
+
+    const segs = 720;
+    const step = (Math.PI * 2) / segs;
+
+    // Build radius profiles
+    const outerProfile = new Float32Array(segs + 1);
+    const innerProfile = new Float32Array(segs + 1);
+
+    // Base band with slight wobble
+    for (let i = 0; i <= segs; i++) {
+      const wobble = (haloHash(i * 3.7 + 0.5) - 0.5) * 1.5 * ease;
+      outerProfile[i] = haloR + haloBand / 2 + wobble;
+      innerProfile[i] = haloR - haloBand / 2 + (haloHash(i * 5.1 + 1.3) - 0.5) * 0.5 * ease;
+    }
+
+    // Data-driven thorns: one per dimension, sized by actual sub-dimension coverage gap
+    let thornIdx = 0;
+    hosSections.forEach(sec => {
+      sec.dimensions.forEach(dim => {
+        // Calculate coverage gap from sub-dimensions
+        const subs = dim.subDims || [];
+        const total = subs.length || 1;
+        const covered = subs.filter(s => s.covered).length;
+        const w = 1 - (covered / total); // 0 = fully covered, 1 = fully uncovered
+        if (w < 0.05) return; // essentially fully covered = smooth
+
+        const h1 = haloHash(thornIdx * 17.3 + 1.0);
+        const h2 = haloHash(thornIdx * 23.7 + 2.0);
+        const h3 = haloHash(thornIdx * 31.1 + 3.0);
+        thornIdx++;
+
+        // Staggered emergence
+        const thornDelay = h1 * 0.4;
+        const thornIntensity = Math.max(0, Math.min(1, (ease - thornDelay) / (1 - thornDelay)));
+
+        // Place thorn at the midpoint of this dimension's angular span
+        const dimMidAngle = (dim.startAngle + dim.endAngle) / 2;
+        // Convert angle to segment index (angles start at -PI/2)
+        let segAngle = dimMidAngle + Math.PI / 2; // normalize to 0-based
+        if (segAngle < 0) segAngle += Math.PI * 2;
+        const centerSeg = Math.round((segAngle / (Math.PI * 2)) * segs) % segs;
+
+        const maxHeight = haloBand * (3.0 + h2 * 4.0) * w; // scaled by coverage gap
+        const height = maxHeight * thornIntensity;
+        const width = Math.round(2 + h3 * 4);
+
+        // Wide tidal swell
+        const swellWidth = Math.round(30 + h2 * 40);
+        const swellDepth = haloBand * (0.8 + h3 * 1.0) * w * thornIntensity;
+        for (let sw = -swellWidth; sw <= swellWidth; sw++) {
+          const idx = ((centerSeg + sw) % segs + segs) % segs;
+          const sf = 1 - Math.abs(sw) / (swellWidth + 0.5);
+          const swell = swellDepth * sf * sf;
+          innerProfile[idx] = Math.min(innerProfile[idx], haloR - haloBand / 2 - swell);
+        }
+
+        // Outward spike
+        for (let sw = -width; sw <= width; sw++) {
+          const idx = ((centerSeg + sw) % segs + segs) % segs;
+          const falloff = 1 - Math.abs(sw) / (width + 0.5);
+          const spike = height * falloff * falloff;
+          outerProfile[idx] = Math.max(outerProfile[idx], haloR + haloBand / 2 + spike);
+        }
+
+        // Inward barb on some
+        if (h1 > 0.7) {
+          const inHeight = haloBand * (0.4 + h3 * 0.6) * w * thornIntensity;
+          const inIdx = ((centerSeg + 1) % segs + segs) % segs;
+          innerProfile[inIdx] = Math.min(innerProfile[inIdx], haloR - haloBand / 2 - inHeight);
+        }
+      });
+    });
+
+    // Draw the halo — no rotation, morphing in place
+    ctx.beginPath();
+    for (let i = 0; i <= segs; i++) {
+      const angle = -Math.PI / 2 + i * step;
+      const r = outerProfile[i % segs];
+      const px = cxc + Math.cos(angle) * r;
+      const py = cyc + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    for (let i = segs; i >= 0; i--) {
+      const angle = -Math.PI / 2 + i * step;
+      const r = innerProfile[i % segs];
+      const px = cxc + Math.cos(angle) * r;
+      const py = cyc + Math.sin(angle) * r;
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${haloCol[0]},${haloCol[1]},${haloCol[2]},${haloAlpha})`;
+    ctx.fill();
+
+    // Glow scales with intensity
+    ctx.save();
+    ctx.shadowColor = `rgba(${haloCol[0]},${haloCol[1]},${haloCol[2]},${bA(0.1 + ease * 0.2)})`;
+    ctx.shadowBlur = (6 + ease * 8) * outerBright;
+    ctx.beginPath(); ctx.arc(cxc, cyc, haloR, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${haloCol[0]},${haloCol[1]},${haloCol[2]},${bA(0.05 + ease * 0.1)})`;
+    ctx.lineWidth = haloBand;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Center
+  ctx.font="600 16px 'Rajdhani',sans-serif";ctx.fillStyle='rgba(212,132,90,0.2)';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(getCenterText(),cxc,cyc-8);
+  ctx.font="11px 'Share Tech Mono',monospace";ctx.fillStyle='rgba(100,120,140,0.18)';
+  ctx.fillText((innerSegments.length + outerSegments.length)+' nodes · '+(innerRelationships.length + crossRingRelationships.length)+' edges',cxc,cyc+10);
+}
+
+// ── Brightness multiplier for outer rings ──
+let outerBright = 1.0;
+const brightSlider = document.getElementById('brightnessSlider');
+const brightVal = document.getElementById('brightVal');
+// Persist in localStorage
+const savedBright = localStorage.getItem('smind_outer_bright');
+if (savedBright) { outerBright = parseFloat(savedBright); brightSlider.value = outerBright; }
+brightVal.textContent = outerBright.toFixed(1) + '×';
+brightSlider.addEventListener('input', () => {
+  outerBright = parseFloat(brightSlider.value);
+  brightVal.textContent = outerBright.toFixed(1) + '×';
+  localStorage.setItem('smind_outer_bright', outerBright);
+});
+// Helper: clamp alpha after brightness multiply
+function bA(alpha) { return Math.min(1, alpha * outerBright); }
+
+const clockEl=document.getElementById('clockTime');
+let currentHover=null,currentCronHover=null,currentHovHour=-1,currentHovHosDim=null,currentHovHosCat=null,currentHovGoal=null;
+// Hover state for new time rings: -1 = none, else segment index
+let currentHovWeekDay=-1, currentHovMonthWeek=-1, currentHovYearMonth=-1;
+// ── Animation loop: 15fps cap, demo mode (D) freezes ──
+let _lastSocFrame=0,_demoMode=false;
+const _SOC_MS=1000/15;
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Escape'){document.getElementById('detailPanel').classList.remove('open');}
+  if(e.key==='d'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&document.activeElement.tagName!=='INPUT'){
+    _demoMode=!_demoMode;
+    if(!_demoMode){render(currentHover,currentCronHover,currentHovHour,currentHovHosDim,currentHovHosCat);clockEl.textContent=getLisbonTime().str;}
+    console.log('Demo mode:',_demoMode?'ON (frozen)':'OFF');
+  }
+});
+function animate(ts){
+  if(!_demoMode&&ts-_lastSocFrame>=_SOC_MS){_lastSocFrame=ts;
+    if(document.getElementById('screen-society').classList.contains('active')){
+      render(currentHover,currentCronHover,currentHovHour,currentHovHosDim,currentHovHosCat,currentHovWeekDay,currentHovMonthWeek,currentHovYearMonth);
+      clockEl.textContent=getLisbonTime().str;
+    }
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// ── Hover ──
+const tooltip=document.getElementById('tooltip');
+const ttType=tooltip.querySelector('.tt-type'),ttName=tooltip.querySelector('.tt-name'),ttDesc=tooltip.querySelector('.tt-desc');
+// Helper: angle to hour (inverse of t2a)
+function angleToHour(a){
+  let frac=(a+Math.PI/2)/(Math.PI*2);
+  while(frac<0)frac+=1;while(frac>=1)frac-=1;
+  return frac*24;
+}
+
+let socLocked = false;
+
+// ── Detail Panel ──
+const detailPanel=document.getElementById('detailPanel');
+const detailTitle=document.getElementById('detailTitle');
+const detailBody=document.getElementById('detailBody');
+document.getElementById('detailClose').addEventListener('click',()=>detailPanel.classList.remove('open'));
+function showGoalPanel(seg, scrollToKey){
+  const goals=seg.children||[];
+  detailTitle.textContent='🎯 SMART GOALS ('+goals.length+')';
+  let html='';
+  goals.forEach(g=>{
+    const sc=g.status==='active'?'active':(g.status==='completed'?'completed':'paused');
+    const hl=scrollToKey===g.key?' style="border-color:rgba(212,132,90,0.5);background:rgba(212,132,90,0.06);"':'';
+    html+='<div class="goal-card" id="goal-'+g.key+'"'+hl+'>';
+    html+='<div class="goal-card-key">'+g.key+' <span class="goal-card-status '+sc+'">'+g.status+'</span></div>';
+    html+='<div class="goal-card-outcome">'+g.outcome+'</div>';
+    if(g.metric)html+='<div class="goal-card-row"><span class="goal-card-label">Metric</span><span class="goal-card-value">'+g.metric+'</span></div>';
+    if(g.target)html+='<div class="goal-card-row"><span class="goal-card-label">Target</span><span class="goal-card-value">'+g.target+'</span></div>';
+    if(g.current)html+='<div class="goal-card-row"><span class="goal-card-label">Current</span><span class="goal-card-value">'+g.current+'</span></div>';
+    html+='</div>';
+  });
+  if(goals.length===0)html='<div style="color:#5a7a8a;font-size:10px;">No goals in viewmodel. Run GENERATE.md to populate.</div>';
+  detailBody.innerHTML=html;
+  detailPanel.classList.add('open');
+  if(scrollToKey){const el=document.getElementById('goal-'+scrollToKey);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+
+mc.addEventListener('click',(e)=>{
+  // Check if clicking on a segment with detail data (goals)
+  if(currentHover && currentHover.id==='goals' && currentHover.children && currentHover.children.length>0 && typeof currentHover.children[0]==='object'){
+    showGoalPanel(currentHover);
+    return;
+  }
+  // Click on a sub-dimension → open detail panel showing dimension's goals
+  if(currentHovGoal && currentHovGoal._dim && currentHovGoal._dim.goals && currentHovGoal._dim.goals.length > 0){
+    const goalsSeg = segments.find(s=>s.id==='goals');
+    if(goalsSeg) showGoalPanel(goalsSeg, currentHovGoal._dim.goals[0].key);
+    return;
+  }
+  if((currentHover||currentCronHover) && !socLocked) { socLocked = true; return; }
+  if(socLocked) {
+    // Allow clicking a different element while locked
+    socLocked = false;
+  }
+});
+
+mc.addEventListener('contextmenu',(e)=>{
+  e.preventDefault();
+  socLocked = false; currentHover=null; currentCronHover=null; currentHovHour=-1; currentHovGoal=null; tooltip.style.display='none';
+});
+
+mc.addEventListener('mousemove',(e)=>{
+  if(isDragging){tooltip.style.display='none';return;}
+  const rect=mc.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)/zoom,my=(e.clientY-rect.top)/zoom;
+  const dx=mx-cxc,dy=my-cyc,dist=Math.sqrt(dx*dx+dy*dy);let a=Math.atan2(dy,dx);
+  let hov=null;
+  let hovTimeHour=-1;
+  let hovCronJob=null;
+
+  // Check cron job dot hover (tight radius around each dot)
+  if(dist>=timeRingInner-20&&dist<=timeRingOuter+20){
+    cronJobs.forEach(job=>{
+      const ja=t2a(job.hour,job.minute);
+      const mp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+      const ddx=mx-mp.x,ddy=my-mp.y;
+      if(Math.sqrt(ddx*ddx+ddy*ddy)<20)hovCronJob=job;
+    });
+    // Heartbeat tick hover (point distance, same as cron dots)
+    if(!hovCronJob){
+      heartbeats.forEach(function(hb){
+        var ja=t2a(hb.hour,hb.minute);
+        var hp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+        var hdx=mx-hp.x,hdy=my-hp.y;
+        if(Math.sqrt(hdx*hdx+hdy*hdy)<15)hovCronJob=hb;
+      });
+    }
+  }
+
+  // Check time ring hover (if not on a cron dot)
+  if(!hovCronJob&&dist>=timeRingInner-15&&dist<=timeRingOuter+15){
+    hovTimeHour=Math.floor(angleToHour(a));
+    if(hovTimeHour>=24)hovTimeHour=0;
+  }
+  // Check week/month/year ring hover
+  let hovWeekDay=-1, hovMonthWeek=-1, hovYearMonth=-1;
+  if(!hovCronJob && hovTimeHour<0){
+    // Week ring
+    if(dist>=weekRingInner-10&&dist<=weekRingOuter+10){
+      const segGap=0.03, totalArc=Math.PI*2-segGap*7, segArc=totalArc/7;
+      for(let d=0;d<7;d++){
+        const sa=-Math.PI/2+d*(segArc+segGap)+segGap/2, ea=sa+segArc;
+        let ta=a;while(ta<sa-Math.PI)ta+=Math.PI*2;while(ta>ea+Math.PI)ta-=Math.PI*2;
+        if(ta>=sa&&ta<=ea){hovWeekDay=d;break;}
+      }
+    }
+    // Month ring
+    if(hovWeekDay<0&&dist>=monthRingInner-10&&dist<=monthRingOuter+10){
+      const lisbonNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+      const yr=lisbonNow.getFullYear(),mo=lisbonNow.getMonth();
+      const dim=new Date(yr,mo+1,0).getDate(),fm=(new Date(yr,mo,1).getDay()+6)%7;
+      const nw=Math.ceil((dim+fm)/7);
+      const segGap=0.04,totalArc=Math.PI*2-segGap*nw,segArc=totalArc/nw;
+      for(let w=0;w<nw;w++){
+        const sa=-Math.PI/2+w*(segArc+segGap)+segGap/2, ea=sa+segArc;
+        let ta=a;while(ta<sa-Math.PI)ta+=Math.PI*2;while(ta>ea+Math.PI)ta-=Math.PI*2;
+        if(ta>=sa&&ta<=ea){hovMonthWeek=w;break;}
+      }
+    }
+    // Year ring
+    if(hovWeekDay<0&&hovMonthWeek<0&&dist>=yearRingInner-10&&dist<=yearRingOuter+10){
+      const segGap=0.025,totalArc=Math.PI*2-segGap*12,segArc=totalArc/12;
+      for(let m=0;m<12;m++){
+        const sa=-Math.PI/2+m*(segArc+segGap)+segGap/2, ea=sa+segArc;
+        let ta=a;while(ta<sa-Math.PI)ta+=Math.PI*2;while(ta>ea+Math.PI)ta-=Math.PI*2;
+        if(ta>=sa&&ta<=ea){hovYearMonth=m;break;}
+      }
+    }
+  }
+  // Check mini-ring segment hover (check all 3 mini-rings)
+  if(!hov && !hovCronJob) {
+    miniRings.forEach(ring => {
+      const rdx = mx - ring.center.x, rdy = my - ring.center.y;
+      const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+      if (rdist >= miniRingInnerR - 10 && rdist <= miniRingR + 30) {
+        const ra = Math.atan2(rdy, rdx);
+        ring.segs.forEach(seg => {
+          let ta = ra; while(ta < seg.startAngle - Math.PI) ta += Math.PI * 2; while(ta > seg.endAngle + Math.PI) ta -= Math.PI * 2;
+          if (ta >= seg.startAngle && ta <= seg.endAngle) hov = seg;
+        });
+      }
+    });
+  }
+  // Check outer ring segment hover
+  if(!hov && dist>=entityInnerR-10&&dist<=entityChildOuterR+30){
+    outerSegments.forEach(seg=>{let ta=a;while(ta<seg.startAngle-Math.PI)ta+=Math.PI*2;while(ta>seg.endAngle+Math.PI)ta-=Math.PI*2;if(ta>=seg.startAngle&&ta<=seg.endAngle)hov=seg;});
+  }
+  // Check hOS rings hover
+  let hovHosDim = null, hovHosCat = null, hovGoal = null;
+  if (!hov && !hovCronJob && hovTimeHour < 0 && dist >= hosSubDimR1 - 10 && dist <= hosCatR2 + 20) {
+    for (const sec of hosSections) {
+      // Check sub-dim ring first (most specific)
+      if (!hovGoal && dist >= hosSubDimR1 - 5 && dist <= hosSubDimR2 + 5) {
+        for (const dim of sec.dimensions) {
+          if (dim.subDims) for (const sub of dim.subDims) {
+            if (sub._sa === undefined) continue;
+            let ta = a; while(ta < sub._sa - Math.PI) ta += Math.PI * 2; while(ta > sub._ea + Math.PI) ta -= Math.PI * 2;
+            if (ta >= sub._sa && ta <= sub._ea) { hovGoal = sub; hovHosDim = dim; hovHosCat = sec; break; }
+          }
+          if (hovGoal) break;
+        }
+      }
+      // Check dimension ring
+      if (!hovGoal && dist >= hosDimR1 - 5 && dist <= hosDimR2 + 5) {
+        for (const dim of sec.dimensions) {
+          let ta = a; while(ta < dim.startAngle - Math.PI) ta += Math.PI * 2; while(ta > dim.endAngle + Math.PI) ta -= Math.PI * 2;
+          if (ta >= dim.startAngle && ta <= dim.endAngle) { hovHosDim = dim; hovHosCat = sec; break; }
+        }
+      }
+      // (sub-dim ring handled above as hovGoal)
+      // Check category ring
+      if (!hovHosDim && dist >= hosCatR1 - 5 && dist <= hosCatR2 + 15) {
+        let ta = a; while(ta < sec.startAngle - Math.PI) ta += Math.PI * 2; while(ta > sec.endAngle + Math.PI) ta -= Math.PI * 2;
+        if (ta >= sec.startAngle && ta <= sec.endAngle) hovHosCat = sec;
+      }
+      if (hovHosDim || hovHosCat) break;
+    }
+  }
+  if(!socLocked){
+    currentHover=hov;
+    currentCronHover=hovCronJob;
+    currentHovHour=hovTimeHour;
+    currentHovWeekDay=hovWeekDay;
+    currentHovMonthWeek=hovMonthWeek;
+    currentHovYearMonth=hovYearMonth;
+    currentHovHosDim=hovHosDim;
+    currentHovHosCat=hovHosCat;
+    currentHovGoal=hovGoal;
+  }
+
+  // Tooltip always follows hover regardless of lock
+  if(hovCronJob){
+    // Cron job dot hover
+    mc.style.cursor='pointer';
+    const ent=segMap[hovCronJob.entityId];
+    var isHBTip=hovCronJob.isHeartbeat;
+    ttType.textContent=isHBTip?'HEARTBEAT':'CRON JOB';
+    ttName.textContent=hovCronJob.emoji+' '+hovCronJob.name;
+    let desc=isHBTip?('Heartbeat poll ~'+String(hovCronJob.hour).padStart(2,'0')+':00 Europe/Lisbon'):('Fires at '+String(hovCronJob.hour).padStart(2,'0')+':'+String(hovCronJob.minute).padStart(2,'0')+' Europe/Lisbon');
+    if(ent)desc+='\nEntity: '+ent.emoji+' '+ent.name;
+    if(isHBTip)desc+='\n\nChecks: questions, email, calendar\nInterval: ~1h during active hours';
+    const lisbon=getLisbonTime();
+    const tf=(hovCronJob.hour+hovCronJob.minute/60)/24,nf=(lisbon.h+lisbon.m/60)/24;
+    let diff=Math.abs(tf-nf);if(diff>0.5)diff=1-diff;
+    const minsAway=Math.round(diff*24*60);
+    if(minsAway<5)desc+='\n\n▶ Firing now!';
+    else if(hovCronJob.hour>lisbon.h||(hovCronJob.hour===lisbon.h&&hovCronJob.minute>lisbon.m))desc+='\n\n○ In ~'+minsAway+' min';
+    else desc+='\n\n✓ Already fired today';
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let tx=e.clientX+16,ty=e.clientY-10;
+    if(tx+320>W)tx=e.clientX-320-10;if(tx<4)tx=4;if(ty<4)ty=4;if(ty+200>H)ty=H-200;
+    tooltip.style.left=tx+'px';tooltip.style.top=ty+'px';
+  }else if(hovTimeHour>=0){
+    // Time ring hover — show hour info
+    mc.style.cursor='pointer';
+    const hStr=String(hovTimeHour).padStart(2,'0')+':00 – '+String(hovTimeHour).padStart(2,'0')+':59';
+    const isQuiet=(hovTimeHour>=quietStart||hovTimeHour<quietEnd);
+    const lisbon=getLisbonTime();
+    const isPast=hovTimeHour<lisbon.h||(hovTimeHour===lisbon.h);
+    const isCurrent=hovTimeHour===lisbon.h;
+
+    ttType.textContent='TIME SLOT';
+    ttName.textContent='🕐 '+hStr;
+
+    let desc='';
+    // Zone
+    desc+=isQuiet?'🌙 Quiet hours (no questions)\n':'☀️ Active hours\n';
+    // Status
+    if(isCurrent)desc+='▶ Current hour\n';
+    else if(isPast)desc+='✓ Elapsed\n';
+    else desc+='○ Upcoming\n';
+
+    // Cron jobs in this hour
+    const hourJobs=cronJobs.filter(j=>j.hour===hovTimeHour);
+    if(hourJobs.length>0){
+      desc+='\n⏰ Scheduled jobs:\n';
+      hourJobs.forEach(j=>{
+        const ent=segMap[j.entityId];
+        desc+=j.emoji+' '+j.name+' @ '+String(j.hour).padStart(2,'0')+':'+String(j.minute).padStart(2,'0');
+        if(ent)desc+=' ('+ent.name+')';
+        desc+='\n';
+      });
+    }else{
+      desc+='\nNo jobs scheduled';
+    }
+
+    // Heartbeat info if relevant
+    if(!isQuiet&&hourJobs.length===0){
+      desc+='\n💓 Heartbeat may run (main session)';
+    }
+
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let tx2=e.clientX+16,ty2=e.clientY-10;
+    if(tx2+320>W)tx2=e.clientX-320-10;if(tx2<4)tx2=4;if(ty2<4)ty2=4;if(ty2+200>H)ty2=H-200;
+    tooltip.style.left=tx2+'px';tooltip.style.top=ty2+'px';
+  }else if(hovWeekDay>=0){
+    mc.style.cursor='pointer';
+    const dayNames=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const lisbonNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const dow=(lisbonNow.getDay()+6)%7;
+    const isToday2=hovWeekDay===dow;
+    const isPast2=hovWeekDay<dow;
+    // Calculate actual date for this weekday
+    const dayDate=new Date(lisbonNow);dayDate.setDate(dayDate.getDate()+(hovWeekDay-dow));
+    const dateStr=dayDate.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    ttType.textContent='WEEK';
+    ttName.textContent='📅 '+dayNames[hovWeekDay]+' · '+dateStr;
+    let desc2='';
+    if(isToday2)desc2+='▶ Today\n';
+    else if(isPast2)desc2+='✓ Elapsed\n';
+    else desc2+='○ Upcoming\n';
+    desc2+='\nNo events scheduled';
+    ttDesc.textContent=desc2;tooltip.style.display='block';
+    let tx3=e.clientX+16,ty3=e.clientY-10;
+    if(tx3+320>W)tx3=e.clientX-320-10;if(tx3<4)tx3=4;if(ty3<4)ty3=4;if(ty3+200>H)ty3=H-200;
+    tooltip.style.left=tx3+'px';tooltip.style.top=ty3+'px';
+  }else if(hovMonthWeek>=0){
+    mc.style.cursor='pointer';
+    const lisbonNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const yr=lisbonNow.getFullYear(),mo=lisbonNow.getMonth();
+    const dim=new Date(yr,mo+1,0).getDate(),fm=(new Date(yr,mo,1).getDay()+6)%7;
+    const cw=Math.floor((lisbonNow.getDate()-1+fm)/7);
+    const startDay=Math.max(1,hovMonthWeek*7-fm+1);
+    const endDay=Math.min(dim,(hovMonthWeek+1)*7-fm);
+    const monthName=lisbonNow.toLocaleDateString('en-US',{month:'long'});
+    const isCurWk=hovMonthWeek===cw;
+    const isPastWk=hovMonthWeek<cw;
+    ttType.textContent='MONTH · '+monthName.toUpperCase();
+    ttName.textContent='📅 Week '+(hovMonthWeek+1)+' · '+monthName+' '+startDay+'–'+endDay;
+    let desc3='';
+    if(isCurWk)desc3+='▶ Current week\n';
+    else if(isPastWk)desc3+='✓ Elapsed\n';
+    else desc3+='○ Upcoming\n';
+    desc3+='\nNo events scheduled';
+    ttDesc.textContent=desc3;tooltip.style.display='block';
+    let tx4=e.clientX+16,ty4=e.clientY-10;
+    if(tx4+320>W)tx4=e.clientX-320-10;if(tx4<4)tx4=4;if(ty4<4)ty4=4;if(ty4+200>H)ty4=H-200;
+    tooltip.style.left=tx4+'px';tooltip.style.top=ty4+'px';
+  }else if(hovYearMonth>=0){
+    mc.style.cursor='pointer';
+    const monthNames2=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const lisbonNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Lisbon'}));
+    const curMo=lisbonNow.getMonth();
+    const isCurMo=hovYearMonth===curMo;
+    const isPastMo=hovYearMonth<curMo;
+    ttType.textContent='YEAR · '+lisbonNow.getFullYear();
+    ttName.textContent='📅 '+monthNames2[hovYearMonth]+' '+lisbonNow.getFullYear();
+    let desc4='';
+    if(isCurMo)desc4+='▶ Current month\n';
+    else if(isPastMo)desc4+='✓ Elapsed\n';
+    else desc4+='○ Upcoming\n';
+    desc4+='\nNo events scheduled';
+    ttDesc.textContent=desc4;tooltip.style.display='block';
+    let tx5=e.clientX+16,ty5=e.clientY-10;
+    if(tx5+320>W)tx5=e.clientX-320-10;if(tx5<4)tx5=4;if(ty5<4)ty5=4;if(ty5+200>H)ty5=H-200;
+    tooltip.style.left=tx5+'px';tooltip.style.top=ty5+'px';
+  }else if(hov){
+    mc.style.cursor='pointer';ttType.textContent=hov.type==='entity'?'ENTITY':'DATA TABLE';
+    ttName.textContent=hov.emoji+' '+getDisplayName(hov);let desc=hov.desc;
+    if(hov.children.length>0)desc+='\n\nArtifacts: '+hov.children.join(', ');
+    
+    // Combine all relationships involving this segment
+    const allRels = [...innerRelationships, ...crossRingRelationships].filter(r=>r[0]===hov.id||r[1]===hov.id);
+    if(allRels.length>0){
+      const feeds=allRels.filter(r=>r[0]===hov.id&&r[2]==='feeds').map(r=>segMap[r[1]]?.name).filter(Boolean);
+      const fedBy=allRels.filter(r=>r[1]===hov.id&&r[2]==='feeds').map(r=>segMap[r[0]]?.name).filter(Boolean);
+      const owns=allRels.filter(r=>r[0]===hov.id&&r[2]==='owns').map(r=>segMap[r[1]]?.name).filter(Boolean);
+      const reads=allRels.filter(r=>r[0]===hov.id&&r[2]==='reads').map(r=>segMap[r[1]]?.name).filter(Boolean);
+      const ownedBy=allRels.filter(r=>r[1]===hov.id&&r[2]==='owns').map(r=>segMap[r[0]]?.name).filter(Boolean);
+      const readBy=allRels.filter(r=>r[1]===hov.id&&r[2]==='reads').map(r=>segMap[r[0]]?.name).filter(Boolean);
+      
+      if(feeds.length)desc+='\n\n→ Feeds: '+feeds.join(', ');
+      if(fedBy.length)desc+='\n← Fed by: '+fedBy.join(', ');
+      if(owns.length)desc+='\n\n→ Writes: '+owns.join(', ');
+      if(reads.length)desc+='\n← Reads: '+reads.join(', ');
+      if(ownedBy.length)desc+='\n✎ Written by: '+ownedBy.join(', ');
+      if(readBy.length)desc+='\n👁 Read by: '+readBy.join(', ');
+    }
+    const jobs=cronJobs.filter(j=>j.entityId===hov.id);
+    if(jobs.length>0)desc+='\n\n⏰ Cron: '+jobs.map(j=>j.name+' @ '+String(j.hour).padStart(2,'0')+':'+String(j.minute).padStart(2,'0')).join(', ');
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let tx3=e.clientX+16,ty3=e.clientY-10;
+    if(tx3+320>W)tx3=e.clientX-320-10;if(tx3<4)tx3=4;if(ty3<4)ty3=4;if(ty3+200>H)ty3=H-200;
+    tooltip.style.left=tx3+'px';tooltip.style.top=ty3+'px';
+  }else if(hovGoal){
+    // Sub-dimension hover
+    mc.style.cursor='pointer';
+    ttType.textContent='SUB-DIMENSION';
+    const covIcon = hovGoal.covered ? '✅' : '❌';
+    ttName.textContent=covIcon+' '+hovGoal.name;
+    let desc=hovGoal.covered ? 'Covered by goal(s)' : 'Not yet covered — no goal addresses this area';
+    if(hovHosDim){
+      desc+='\nDimension: '+hovHosDim.name;
+      // Only show goals if this sub-dimension is covered
+      if(hovGoal.covered && hovHosDim.goals && hovHosDim.goals.length > 0){
+        // Filter to goals whose text mentions this sub-dimension
+        const subLower = hovGoal.name.toLowerCase();
+        const subWords = subLower.split(/[\s\/&,]+/).filter(w=>w.length>=4);
+        const relevant = hovHosDim.goals.filter(g=>{
+          const gt = ((g.outcome||'')+(g.metric||'')+(g.key||'')).toLowerCase();
+          return subWords.some(w=>gt.includes(w));
+        });
+        const show = relevant.length > 0 ? relevant : hovHosDim.goals;
+        desc+='\n';
+        show.forEach(g=>{
+          desc+='\n🎯 '+g.key;
+          if(g.outcome){
+            const short=g.outcome.length>120?g.outcome.slice(0,120)+'…':g.outcome;
+            desc+='\n   '+short;
+          }
+          if(g.target)desc+='\n   Target: '+g.target;
+        });
+      }
+    }
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let txg=e.clientX+16,tyg=e.clientY-10;
+    if(txg+320>W)txg=e.clientX-320-10;if(txg<4)txg=4;if(tyg<4)tyg=4;if(tyg+200>H)tyg=H-200;
+    tooltip.style.left=txg+'px';tooltip.style.top=tyg+'px';
+  }else if(hovHosDim){
+    mc.style.cursor='pointer';
+    ttType.textContent='LIFE DIMENSION';
+    ttName.textContent=hovHosDim.id+' '+hovHosDim.name;
+    let desc='Status: '+hovHosDim.status;
+    if(hovHosCat){
+      desc+='\nCategory: '+(hovHosCat.unmapped?'Individual':hovHosCat.category.name);
+    }
+    if(hovHosDim.subDims&&hovHosDim.subDims.length>0){
+      const covered=hovHosDim.subDims.filter(s=>s.covered).length;
+      desc+='\n\nSub-dimensions: '+covered+'/'+hovHosDim.subDims.length+' covered';
+      hovHosDim.subDims.forEach(s=>{
+        desc+='\n  '+(s.covered?'✅':'❌')+' '+s.name;
+      });
+    }
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let tx4=e.clientX+16,ty4=e.clientY-10;
+    if(tx4+320>W)tx4=e.clientX-320-10;if(tx4<4)tx4=4;if(ty4<4)ty4=4;if(ty4+200>H)ty4=H-200;
+    tooltip.style.left=tx4+'px';tooltip.style.top=ty4+'px';
+  }else if(hovHosCat){
+    mc.style.cursor='pointer';
+    ttType.textContent=hovHosCat.unmapped?'INDIVIDUAL':'hOS CATEGORY';
+    ttName.textContent=hovHosCat.unmapped?'Individual':hovHosCat.category.name;
+    let desc=hovHosCat.dimensions.length+' dimension'+(hovHosCat.dimensions.length!==1?'s':'');
+    hovHosCat.dimensions.forEach(d=>{
+      const icon=d.status==='covered'?'🟢':(d.status==='partial'?'🟡':'🔴');
+      desc+='\n  '+icon+' '+d.id+' '+d.name;
+    });
+    ttDesc.textContent=desc;tooltip.style.display='block';
+    let tx5=e.clientX+16,ty5=e.clientY-10;
+    if(tx5+320>W)tx5=e.clientX-320-10;if(tx5<4)tx5=4;if(ty5<4)ty5=4;if(ty5+200>H)ty5=H-200;
+    tooltip.style.left=tx5+'px';tooltip.style.top=ty5+'px';
+  }else{mc.style.cursor='grab';tooltip.style.display='none';}
+});
+mc.addEventListener('mouseleave',()=>{if(!socLocked){tooltip.style.display='none';currentHover=null;currentCronHover=null;currentHovHour=-1;currentHovWeekDay=-1;currentHovMonthWeek=-1;currentHovYearMonth=-1;currentHovGoal=null;}});
+
+// ── Touch: tap detection (distinguish from pan) ──
+let socTapStart = null;
+mc.addEventListener('touchstart',(e)=>{
+  if(e.touches.length===1){
+    socTapStart={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()};
+  }else{socTapStart=null;}
+},{passive:true});
+mc.addEventListener('touchmove',(e)=>{
+  if(socTapStart&&e.touches.length===1){
+    const dx=e.touches[0].clientX-socTapStart.x,dy=e.touches[0].clientY-socTapStart.y;
+    if(dx*dx+dy*dy>100)socTapStart=null;
+  }else{socTapStart=null;}
+},{passive:true});
+mc.addEventListener('touchend',(e)=>{
+  if(!socTapStart||Date.now()-socTapStart.t>400)return;
+  const cx=socTapStart.x,cy=socTapStart.y;
+  socTapStart=null;
+  const rect=mc.getBoundingClientRect();
+  const mx=(cx-rect.left)/zoom,my=(cy-rect.top)/zoom;
+  const dx=mx-cxc,dy=my-cyc,dist=Math.sqrt(dx*dx+dy*dy);
+  let a=Math.atan2(dy,dx);
+  let hov=null,hovCronJob=null,hovTimeHour=-1;
+
+  if(dist>=timeRingInner-20&&dist<=timeRingOuter+20){
+    cronJobs.forEach(job=>{
+      const ja=t2a(job.hour,job.minute);
+      const mp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+      const ddx=mx-mp.x,ddy=my-mp.y;
+      if(Math.sqrt(ddx*ddx+ddy*ddy)<25)hovCronJob=job;
+    });
+    if(!hovCronJob){
+      heartbeats.forEach(function(hb){
+        var ja=t2a(hb.hour,hb.minute);
+        var hp=p2c(ja,(timeRingInner+timeRingOuter)/2);
+        var hdx=mx-hp.x,hdy=my-hp.y;
+        if(Math.sqrt(hdx*hdx+hdy*hdy)<25)hovCronJob=hb;
+      });
+    }
+  }
+  if(!hovCronJob&&dist>=timeRingInner-15&&dist<=timeRingOuter+15){
+    hovTimeHour=Math.floor(angleToHour(a));if(hovTimeHour>=24)hovTimeHour=0;
+  }
+  // Check mini-rings for touch
+  if(!hov && !hovCronJob) {
+    miniRings.forEach(ring => {
+      const rdx = mx - ring.center.x, rdy = my - ring.center.y;
+      const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+      if (rdist >= miniRingInnerR - 15 && rdist <= miniRingR + 30) {
+        const ra = Math.atan2(rdy, rdx);
+        ring.segs.forEach(seg => {
+          let ta = ra; while(ta < seg.startAngle - Math.PI) ta += Math.PI * 2; while(ta > seg.endAngle + Math.PI) ta -= Math.PI * 2;
+          if (ta >= seg.startAngle && ta <= seg.endAngle) hov = seg;
+        });
+      }
+    });
+  }
+  if(!hov && dist>=entityInnerR-10&&dist<=entityChildOuterR+30){
+    outerSegments.forEach(seg=>{let ta=a;while(ta<seg.startAngle-Math.PI)ta+=Math.PI*2;while(ta>seg.endAngle+Math.PI)ta-=Math.PI*2;if(ta>=seg.startAngle&&ta<=seg.endAngle)hov=seg;});
+  }
+
+  if(hov||hovCronJob||hovTimeHour>=0){
+    // Toggle: tap same element again to dismiss
+    if(socLocked && ((hov && currentHover===hov)||(hovCronJob && currentCronHover===hovCronJob))){
+      socLocked=false;currentHover=null;currentCronHover=null;currentHovHour=-1;currentHovGoal=null;tooltip.style.display='none';
+    }else{
+      socLocked=true;currentHover=hov;currentCronHover=hovCronJob;currentHovHour=hovTimeHour;
+      // Populate tooltip via mousemove
+      mc.dispatchEvent(new MouseEvent('mousemove',{clientX:cx,clientY:cy}));
+    }
+  }else{
+    // Tap empty space → dismiss
+    socLocked=false;tooltip.style.display='none';currentHover=null;currentCronHover=null;currentHovHour=-1;currentHovGoal=null;
+  }
+},{passive:true});
+
+// ── Side Panel Navigation ──
+const sidePanel=document.getElementById('sidePanel');
+const menuBtn=document.getElementById('menuBtn');
+const panelClose=document.getElementById('panelClose');
+const navItems=document.querySelectorAll('.nav-item');
+const screens=document.querySelectorAll('.screen');
+
+function openPanel(){sidePanel.classList.add('open');menuBtn.classList.add('hidden');document.body.classList.add('panel-open');}
+function closePanel(){sidePanel.classList.remove('open');menuBtn.classList.remove('hidden');document.body.classList.remove('panel-open');}
+
+menuBtn.addEventListener('click',openPanel);
+panelClose.addEventListener('click',closePanel);
+
+navItems.forEach(item=>{
+  item.addEventListener('click',()=>{
+    const target=item.dataset.screen;
+    navItems.forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    screens.forEach(s=>s.classList.remove('active'));
+    const targetScreen=document.getElementById('screen-'+target);
+    if(targetScreen)targetScreen.classList.add('active');
+    // Update title bar
+    const titleEl=document.querySelector('.title-bar h1');
+    if(target==='society'){titleEl.textContent='SMind Society';document.getElementById('brightnessControl').style.display='flex';}
+    else if(target==='usermodel'){titleEl.textContent='SMind User Model';document.getElementById('brightnessControl').style.display='none';}
+    // On mobile, auto-close panel after selection
+    if(window.innerWidth<768)closePanel();
+  });
+});
+
+// Set version in panel footer
+document.getElementById('panelVersion').textContent=document.getElementById('version').textContent;
+
+// ── 2D User Model Graph (pure Canvas2D, precomputed layout) ──
+(async function() {
+  const vm = await (await fetch('viewmodel.json?t='+Date.now())).json();
+  const um = vm.userModel;
+  if (!um) return;
+
+  const h2r = (hex,a) => 'rgba('+parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16)+','+a+')';
+
+  function nodeTagCol(n) {
+    for (const t of (n.tags||[])) if (um.tagColors[t]) return um.tagColors[t];
+    return um.config.defaultNodeColor;
+  }
+  function linkTagCol(e) {
+    for (const t of (e.sharedTags||[])) if (um.tagColors[t]) return um.tagColors[t];
+    return um.config.defaultEdgeColor;
+  }
+
+  // Build node map
+  const nodeMap = {};
+  um.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  // Adjacency + degree
+  const adj = {}, deg = {};
+  um.edges.forEach(e => {
+    (adj[e.source] = adj[e.source] || new Set()).add(e.target);
+    (adj[e.target] = adj[e.target] || new Set()).add(e.source);
+    deg[e.source] = (deg[e.source]||0)+1;
+    deg[e.target] = (deg[e.target]||0)+1;
+  });
+
+  // Highlight state
+  let hlNode = null;
+  const hlSet = new Set();
+  function setHl(node) {
+    hlNode = node;
+    hlSet.clear();
+    if (node) {
+      hlSet.add(node.id);
+      (adj[node.id]||new Set()).forEach(id => hlSet.add(id));
+    }
+  }
+
+  // Tooltip
+  const tip = document.getElementById('graphTooltip');
+  const tipT = tip.querySelector('.gt-title');
+  const tipS = tip.querySelector('.gt-summary');
+  const tipG = tip.querySelector('.gt-tags');
+  const tipC = tip.querySelector('.gt-conns');
+  function showTip(n) {
+    tipT.textContent = n.label;
+    const sum = n.summary || '';
+    tipS.textContent = sum.length > 200 ? sum.slice(0,200)+'…' : sum;
+    tipG.textContent = (n.tags||[]).slice(0,6).join(' · ');
+    const c = (adj[n.id]||new Set()).size;
+    tipC.textContent = c+' connection'+(c!==1?'s':'');
+    tip.style.display = 'block';
+  }
+  function hideTip() { tip.style.display = 'none'; if(typeof hideCorrectForm!=='undefined') hideCorrectForm(); }
+
+  // Canvas setup — cap pixel count for mobile (iOS ~16.7MP limit)
+  const umSize = 4000;
+  const maxCanvasPx = 16000000; // 16MP safe limit
+  const umDpr = Math.min(dpr, Math.floor(Math.sqrt(maxCanvasPx / (umSize * umSize))) || 1);
+  const umC = document.getElementById('umCanvas');
+  umC.width = umSize * umDpr; umC.height = umSize * umDpr;
+  umC.style.width = umSize+'px'; umC.style.height = umSize+'px';
+  umC.style.willChange='transform';
+  const ux = umC.getContext('2d');
+  ux.scale(umDpr, umDpr);
+
+  // Pan & zoom (same pattern as society)
+  const gc = document.getElementById('graph-container');
+  const gs = document.getElementById('graph-scene');
+  let gZoom=1, gPanX=(W-umSize)/2, gPanY=(H-umSize)/2, gDrag=false, gDragX, gDragY, gPanSX, gPanSY;
+
+  function gApply() { gs.style.transform='translate('+gPanX+'px,'+gPanY+'px) scale('+gZoom+')'; document.getElementById('umZoomLabel').textContent=Math.round(gZoom*100)+'%'; }
+  function gZoomTo(nz,px,py) { const oz=gZoom; nz=Math.max(0.2,Math.min(5,nz)); gPanX=px-(px-gPanX)*(nz/oz); gPanY=py-(py-gPanY)*(nz/oz); gZoom=nz; gApply(); }
+  gApply();
+
+  gc.addEventListener('wheel',e=>{ e.preventDefault(); gZoomTo(gZoom*(e.deltaY>0?0.9:1.1),e.clientX,e.clientY); },{passive:false});
+  gc.addEventListener('mousedown',e=>{ if(e.button!==0)return; gDrag=true; gDragX=e.clientX; gDragY=e.clientY; gPanSX=gPanX; gPanSY=gPanY; gc.classList.add('dragging'); });
+  window.addEventListener('mousemove',e=>{ if(!gDrag)return; gPanX=gPanSX+(e.clientX-gDragX); gPanY=gPanSY+(e.clientY-gDragY); gApply(); });
+  window.addEventListener('mouseup',()=>{ gDrag=false; gc.classList.remove('dragging'); });
+
+  // Touch: pan + pinch (same as society)
+  let gTDist=0, gTZoom=1, gTMidX=0, gTMidY=0;
+  function gTouchDist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+  function gTouchMid(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+
+  gc.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    if(e.touches.length===1){ gDrag=true; gDragX=e.touches[0].clientX; gDragY=e.touches[0].clientY; gPanSX=gPanX; gPanSY=gPanY; }
+    else if(e.touches.length===2){ gDrag=false; gTDist=gTouchDist(e.touches); gTZoom=gZoom; const m=gTouchMid(e.touches); gTMidX=m.x; gTMidY=m.y; gPanSX=gPanX; gPanSY=gPanY; gDragX=m.x; gDragY=m.y; }
+  },{passive:false});
+  gc.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===1&&gDrag){ gPanX=gPanSX+(e.touches[0].clientX-gDragX); gPanY=gPanSY+(e.touches[0].clientY-gDragY); gApply(); }
+    else if(e.touches.length===2){ const d=gTouchDist(e.touches); const m=gTouchMid(e.touches); gZoomTo(gTZoom*(d/gTDist),gTMidX,gTMidY); gPanX+=m.x-gTMidX; gPanY+=m.y-gTMidY; gTMidX=m.x; gTMidY=m.y; gApply(); }
+  },{passive:false});
+  gc.addEventListener('touchend',e=>{
+    if(e.touches.length===0) gDrag=false;
+    else if(e.touches.length===1){ gDrag=true; gDragX=e.touches[0].clientX; gDragY=e.touches[0].clientY; gPanSX=gPanX; gPanSY=gPanY; }
+  },{passive:false});
+
+  document.getElementById('umZoomIn').addEventListener('click',()=>gZoomTo(gZoom*1.25,W/2,H/2));
+  document.getElementById('umZoomOut').addEventListener('click',()=>gZoomTo(gZoom*0.8,W/2,H/2));
+  document.getElementById('umZoomFit').addEventListener('click',()=>{gZoom=1;gPanX=(W-umSize)/2;gPanY=(H-umSize)/2;gApply();});
+
+  // Precompute cluster centroids (top tags only)
+  const clusterCentroids = {};
+  const tagNodePositions = {};
+  um.nodes.forEach(n => {
+    const primaryTag = (n.tags||[])[0];
+    if (primaryTag && um.tagColors[primaryTag]) {
+      if (!tagNodePositions[primaryTag]) tagNodePositions[primaryTag] = [];
+      tagNodePositions[primaryTag].push({x: n.x, y: n.y});
+    }
+  });
+  for (const tag in tagNodePositions) {
+    const pts = tagNodePositions[tag];
+    if (pts.length < 3) continue; // skip tiny clusters
+    const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+    const cy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    clusterCentroids[tag] = {x: cx, y: cy, count: pts.length};
+  }
+
+  // Render
+  function renderGraph() {
+    ux.clearRect(0, 0, umSize, umSize);
+
+    // Cluster labels (behind everything)
+    // Determine which cluster(s) are active based on selected node's primary tag
+    const activeTags = new Set();
+    if (hlNode) {
+      (hlNode.tags||[]).forEach(t => { if (clusterCentroids[t]) activeTags.add(t); });
+      // Also include tags from chain nodes
+      chainNodes.forEach(id => {
+        const cn = nodeMap[id];
+        if (cn) (cn.tags||[]).forEach(t => { if (clusterCentroids[t]) activeTags.add(t); });
+      });
+    }
+    for (const tag in clusterCentroids) {
+      const c = clusterCentroids[tag];
+      const col = um.tagColors[tag];
+      const isActive = activeTags.has(tag);
+      const anySelection = hlNode !== null;
+      const alpha = anySelection ? (isActive ? 0.7 : 0.5) : 0.25;
+      ux.save();
+      ux.font = "600 32px 'Rajdhani',sans-serif";
+      ux.fillStyle = h2r(col, alpha);
+      ux.textAlign = 'center'; ux.textBaseline = 'middle';
+      ux.fillText(tag.toUpperCase(), c.x, c.y);
+      ux.restore();
+    }
+
+    // Edges — highlight connections from ANY node in the chain OR hovered node
+    chainSet.clear();
+    chainNodes.forEach(id => chainSet.add(id));
+    if (hlNode && chainSet.size === 0) chainSet.add(hlNode.id);
+    um.edges.forEach(e => {
+      const sn = nodeMap[e.source], tn = nodeMap[e.target];
+      if (!sn || !tn) return;
+      const active = chainSet.size > 0 && (chainSet.has(e.source) || chainSet.has(e.target));
+      const anyHl = hlNode !== null;
+      if (anyHl && !active) { ux.strokeStyle = 'rgba(30,45,60,0.06)'; ux.lineWidth = 0.3; }
+      else if (active) { ux.strokeStyle = h2r(linkTagCol(e), 0.9); ux.lineWidth = 2.5; }
+      else { ux.strokeStyle = h2r(linkTagCol(e), 0.7); ux.lineWidth = 1; }
+      ux.beginPath(); ux.moveTo(sn.x, sn.y); ux.lineTo(tn.x, tn.y); ux.stroke();
+    });
+
+    // Nodes
+    um.nodes.forEach(n => {
+      const r = 5;
+      const col = nodeTagCol(n);
+      const dim = hlNode && !hlSet.has(n.id);
+      const act = hlNode && n.id === hlNode.id;
+
+      // Glow
+      if (!dim) {
+        const g = ux.createRadialGradient(n.x,n.y,0,n.x,n.y,r*4);
+        g.addColorStop(0, h2r(col, act?0.45:0.2));
+        g.addColorStop(1, h2r(col, 0));
+        ux.fillStyle = g; ux.beginPath(); ux.arc(n.x,n.y,r*4,0,Math.PI*2); ux.fill();
+      }
+      // Circle
+      const inChain = chainNodes.indexOf(n.id) >= 0;
+      ux.beginPath(); ux.arc(n.x,n.y,r,0,Math.PI*2);
+      ux.fillStyle = dim ? 'rgba(20,28,40,0.15)' : h2r(col, 1);
+      ux.fill();
+      // Radar pulse on selected/chain nodes (matches Society cron dot style)
+      if (act || inChain) {
+        const t = Date.now();
+        for (let w = 0; w < 3; w++) {
+          const phase = ((t / 1000 + w * 0.33) % 1);
+          const pr = r + phase * 30;
+          const pa = 1 - phase;
+          ux.beginPath(); ux.arc(n.x, n.y, pr, 0, Math.PI * 2);
+          ux.strokeStyle = h2r(col, pa * 0.6); ux.lineWidth = 2 - phase * 1.5; ux.stroke();
+        }
+      }
+
+      // Label on active + neighbors
+      if (act || (hlNode && hlSet.has(n.id))) {
+        ux.font = (act ? "11" : "10") + "px 'Share Tech Mono',monospace";
+        ux.fillStyle = h2r(col, act ? 1 : 0.85);
+        ux.textAlign = 'center'; ux.textBaseline = 'top';
+        ux.fillText(n.label, n.x, n.y + r + 5);
+      }
+    });
+  }
+
+  // Hover detection
+  function findNode(mx, my) {
+    for (let i = um.nodes.length-1; i >= 0; i--) {
+      const n = um.nodes[i];
+      const r = 9;
+      const dx = mx - n.x, dy = my - n.y;
+      if (dx*dx + dy*dy <= r*r) return n;
+    }
+    return null;
+  }
+
+  let chainNodes = [];     // ordered list of chained node ids
+  let tipLocked = false;   // double-click: tooltip + correction locked
+
+  // Rebuild hlSet from chain — highlight ALL chain nodes + ALL their neighbors
+  function rebuildHlFromChain() {
+    hlNode = chainNodes.length > 0 ? nodeMap[chainNodes[chainNodes.length-1]] : null;
+    hlSet.clear();
+    chainNodes.forEach(id => {
+      hlSet.add(id);
+      (adj[id]||new Set()).forEach(nid => hlSet.add(nid));
+    });
+  }
+  // Set of chain node ids for edge highlighting
+  const chainSet = new Set();
+
+  umC.addEventListener('mousemove', e => {
+    if (gDrag) return;
+    const rect = umC.getBoundingClientRect();
+    const mx = (e.clientX - rect.left)/gZoom, my = (e.clientY - rect.top)/gZoom;
+    const node = findNode(mx, my);
+    if (chainNodes.length === 0 && !tipLocked) {
+      setHl(node);
+      gc.style.cursor = node ? 'pointer' : 'grab';
+      if (node) showTip(node); else hideTip();
+    } else if (!tipLocked) {
+      gc.style.cursor = node ? 'pointer' : 'default';
+      if (node) showTip(node); else hideTip();
+    }
+  });
+
+  const gtCorrect = document.querySelector('.gt-correct');
+  const gtInput = document.getElementById('gtInput');
+  const gtSaved = document.querySelector('.gt-saved');
+  let lockedNodeId = null;
+
+  function showCorrectForm() { gtCorrect.style.display = 'block'; gtInput.value = ''; gtSaved.style.display = 'none'; }
+  function hideCorrectForm() { gtCorrect.style.display = 'none'; gtSaved.style.display = 'none'; }
+
+  let clickTimer = null;
+
+  umC.addEventListener('click', e => {
+    if (tipLocked) return;
+    // Delay to distinguish from dblclick
+    if (clickTimer) clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      const rect = umC.getBoundingClientRect();
+      const mx = (e.clientX - rect.left)/gZoom, my = (e.clientY - rect.top)/gZoom;
+      const node = findNode(mx, my);
+      if (node) {
+        // Add to chain or start new chain
+        const idx = chainNodes.indexOf(node.id);
+        if (idx >= 0) {
+          // Already in chain — remove it and everything after
+          chainNodes = chainNodes.slice(0, idx);
+        } else {
+          chainNodes.push(node.id);
+        }
+        rebuildHlFromChain();
+        if (node) showTip(node);
+      }
+    }, 250);
+  });
+
+  umC.addEventListener('dblclick', e => {
+    if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+    const rect = umC.getBoundingClientRect();
+    const mx = (e.clientX - rect.left)/gZoom, my = (e.clientY - rect.top)/gZoom;
+    const node = findNode(mx, my);
+    if (node) {
+      tipLocked = true;
+      chainNodes = [node.id]; rebuildHlFromChain();
+      lockedNodeId = node.id;
+      showTip(node); showCorrectForm();
+    }
+  });
+
+  gtInput.addEventListener('keydown', async e => {
+    if (e.key === 'Enter' && gtInput.value.trim() && lockedNodeId) {
+      e.preventDefault();
+      const correction = { nodeId: lockedNodeId, correction: gtInput.value.trim(), timestamp: new Date().toISOString() };
+      try {
+        const resp = await fetch('/api/correction', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(correction) });
+        const result = await resp.json();
+        if (result.ok) { gtInput.value = ''; gtSaved.style.display = 'block'; setTimeout(() => { gtSaved.style.display = 'none'; }, 2000); }
+      } catch(err) { console.error('Save failed', err); }
+    }
+  });
+  // Prevent canvas pan when typing
+  gtInput.addEventListener('touchstart', e => e.stopPropagation());
+
+  umC.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    chainNodes = []; tipLocked = false; lockedNodeId = null;
+    if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+    setHl(null); hideTip(); hideCorrectForm();
+  });
+
+  umC.addEventListener('mouseleave', () => { if (chainNodes.length===0 && !tipLocked) { setHl(null); hideTip(); } });
+
+  // Touch: tap detection (distinguish from pan/pinch)
+  let umTapStart = null;
+  umC.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      umTapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    } else { umTapStart = null; }
+  }, {passive: true});
+  umC.addEventListener('touchmove', e => {
+    if (umTapStart && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - umTapStart.x, dy = e.touches[0].clientY - umTapStart.y;
+      if (dx*dx + dy*dy > 100) umTapStart = null; // moved too much — it's a pan
+    } else { umTapStart = null; }
+  }, {passive: true});
+  umC.addEventListener('touchend', e => {
+    if (!umTapStart || Date.now() - umTapStart.t > 400) return;
+    const rect = umC.getBoundingClientRect();
+    const mx = (umTapStart.x - rect.left)/gZoom, my = (umTapStart.y - rect.top)/gZoom;
+    umTapStart = null;
+    const node = findNode(mx, my);
+    if (node) {
+      if (tipLocked && lockedNodeId === node.id) {
+        // Tap locked node again → unlock
+        tipLocked = false; lockedNodeId = null; chainNodes = [];
+        setHl(null); hideTip(); hideCorrectForm();
+      } else {
+        // Add to chain (same as click)
+        const idx = chainNodes.indexOf(node.id);
+        if (idx >= 0) chainNodes = chainNodes.slice(0, idx);
+        else chainNodes.push(node.id);
+        rebuildHlFromChain();
+        showTip(node);
+      }
+    } else {
+      // Tap empty space → clear everything
+      chainNodes = []; tipLocked = false; lockedNodeId = null;
+      setHl(null); hideTip(); hideCorrectForm();
+    }
+  }, {passive: true});
+
+  // Animation loop (lightweight — just redraws static positions)
+  let _lastUmFrame=0;const _UM_MS=1000/15;
+  function animGraph(ts){if(!_demoMode&&ts-_lastUmFrame>=_UM_MS){_lastUmFrame=ts;if(document.getElementById('screen-usermodel').classList.contains('active')){renderGraph();}}requestAnimationFrame(animGraph);}
+  requestAnimationFrame(animGraph);
+
+  window._resizeGraph = () => { gPanX=(W-umSize)/2; gPanY=(H-umSize)/2; gApply(); };
+
+  // Expose for resize
+  window._umRefit = () => { gPanX=(W-umSize)/2; gPanY=(H-umSize)/2; gApply(); };
+})();
+
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  W = window.innerWidth; H = window.innerHeight;
+  if (window._umRefit) window._umRefit();
+});
+</script>
+</body>
+</html>
