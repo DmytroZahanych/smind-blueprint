@@ -146,6 +146,55 @@ CREATE TABLE IF NOT EXISTS public.smind_data_gap_questions (
 );
 
 -- ============================================================
+-- Extended Society Table
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.smind_society_extended (
+  job_name text PRIMARY KEY,
+  enabled boolean NOT NULL DEFAULT true,
+  instructions text,
+  member text NOT NULL
+);
+
+-- ============================================================
+-- Seed Data: hOS Life Dimensions
+-- ============================================================
+
+INSERT INTO public.smind_hos_life_dimensions (id, name, description) VALUES
+  ('health', 'Health', 'Physical and mental wellbeing, medical care, longevity, and all aspects of bodily health.'),
+  ('finances', 'Finances', 'Financial stability, income, budgeting, taxes, and wealth management.'),
+  ('career', 'Career', 'Professional development, work satisfaction, skills, and career trajectory.'),
+  ('relationships', 'Relationships', 'Interpersonal connections — partner, family, friends, social life, and dependents including pets.'),
+  ('spirituality', 'Spirituality', 'Meaning, purpose, inner life, values, and philosophical grounding.'),
+  ('enjoyment', 'Enjoyment', 'Leisure, hobbies, fun, creativity, and experiences that bring joy.'),
+  ('impact', 'Impact', 'Contribution to others, community, legacy, and making a difference beyond oneself.')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- Seed Data: Extended Society Members
+-- ============================================================
+
+INSERT INTO public.smind_society (name, description, type) VALUES
+  ('Health Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for physical/mental health, medical care, and longevity. Evaluates smind_life_dimensions for gaps in health-related dimension coverage.', 'extended'),
+  ('Finances Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for financial stability, income, budgeting, and wealth. Evaluates smind_life_dimensions for gaps in finance-related dimension coverage.', 'extended'),
+  ('Career Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for professional development, work satisfaction, and career trajectory. Evaluates smind_life_dimensions for gaps in career-related dimension coverage.', 'extended'),
+  ('Relationships Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for interpersonal connections — partner, family, friends, social life, and dependents. Evaluates smind_life_dimensions for gaps in relationship-related dimension coverage.', 'extended'),
+  ('Spirituality Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for meaning, purpose, inner life, values, and philosophical grounding. Evaluates smind_life_dimensions for gaps in spirituality-related dimension coverage.', 'extended'),
+  ('Enjoyment Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for leisure, hobbies, creativity, and experiences that bring joy. Evaluates smind_life_dimensions for gaps in enjoyment-related dimension coverage.', 'extended'),
+  ('Impact Life Dimension Agent', 'Defines what comprehensive life dimension coverage looks like for contribution to others, community, legacy, and making a difference. Evaluates smind_life_dimensions for gaps in impact-related dimension coverage.', 'extended')
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
+-- Seed Data: Extended Society Jobs
+-- Note: Job instructions are long prompts. They are inserted here
+-- so new installs get the full extended pipeline out of the box.
+-- Instructions can be updated later via the society pipeline.
+-- ============================================================
+
+-- Instructions are inserted via seed-extended-jobs.sql (separate file)
+-- to keep this migration readable. Run it after this migration.
+
+-- ============================================================
 -- Enable Row Level Security (optional but recommended)
 -- For a single-user setup, you can use service key and skip RLS.
 -- ============================================================
