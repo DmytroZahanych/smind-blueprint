@@ -8,7 +8,7 @@ The jobs should run in sequence (each ~30 min apart to allow completion):
 
 1. **Scientist** (5 jobs) — produces/updates benchmarks
 2. **Evaluator** (5 jobs) — grades data vs benchmarks, opens GitHub issues
-3. **Workers** (4 jobs) — address GitHub issues
+3. **Workers** (5 jobs) — address GitHub issues
 4. **Snapshot** — backup database
 
 ## Recommended Schedule

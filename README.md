@@ -15,7 +15,7 @@ SMind is a personal AI assistant that:
 
 ## Architecture
 
-SMind runs a nightly pipeline of 9 entities and 16+ jobs:
+SMind runs a nightly pipeline of 9 core entities (+ 7 extended) and 16 jobs:
 
 - **Scientist** — produces quality benchmarks (schema-only, never reads your data)
 - **Evaluator** — grades your data against benchmarks, opens GitHub issues

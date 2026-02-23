@@ -52,7 +52,7 @@ You'll need the following. Get them all before proceeding.
 
 Open the Supabase SQL Editor and paste the contents of `supabase/migration.sql`. Run it.
 
-This creates all 13 tables:
+This creates 12 tables + 1 RPC function:
 - `user_model_profile_as_items` — user profile facts
 - `user_model_scheduling_constraints_and_preferences` — calendar/scheduling data
 - `user_data_history` — activity history
@@ -65,7 +65,7 @@ This creates all 13 tables:
 - `smind_life_dimensions` — discovered life dimensions
 - `smind_hos_life_dimensions` — higher-order structure dimensions
 - `smind_data_gap_questions` — questions for the user
-- `exec_sql` RPC function
+- `exec_sql` — RPC function for arbitrary SQL queries
 
 ### 2.3 Bootstrap Society
 
@@ -353,6 +353,9 @@ smind-blueprint/
 │   └── README.md               ← Cron job schedule & setup
 ├── skills/
 │   └── README.md               ← Skill installation guide
+├── scripts/
+│   ├── populate_extended_society.sh  ← Populate extended entities via REST
+│   └── regen_viewmodel_dimensions.py ← Regenerate dashboard viewmodel
 └── dashboard/
     ├── index.html              ← FUI dashboard
     ├── server.py               ← Simple HTTP server
