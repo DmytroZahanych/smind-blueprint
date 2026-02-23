@@ -35,7 +35,10 @@ ORDER BY table_name, ordinal_position;
 
 If tables exist but columns differ, you'll need to `ALTER TABLE` manually. The migration won't modify existing tables.
 
-### 3. Society bootstrap (careful!)
+### 3. Extended society seed
+Run `supabase/seed-extended-jobs.sql` — it uses `ON CONFLICT DO NOTHING`, so it's safe on existing installs. This adds extended Life Dimension Agent jobs if they don't exist yet.
+
+### 4. Society bootstrap (careful!)
 `society/bootstrap.sql` uses plain `INSERT` statements that will **fail on duplicates**. For existing installs, use upserts instead:
 
 ```sql
@@ -47,16 +50,16 @@ ON CONFLICT (job_name) DO UPDATE SET instructions = EXCLUDED.instructions;
 
 Or selectively update only the jobs whose instructions you want to refresh.
 
-### 4. Workspace files
+### 5. Workspace files
 **Don't overwrite** your customized files. Instead:
 - Diff your `AGENTS.md` against `workspace-templates/AGENTS.md` for new protocols
 - Check `HEARTBEAT.md` for updated Face behavior
 - Update `SCHEMA.md` if new tables were added
 
-### 5. Scientist benchmarks
+### 6. Scientist benchmarks
 Safe to overwrite — they're schema-only and self-improving. Copy `society/scientist/` into your workspace.
 
-### 6. Cron jobs
+### 7. Cron jobs
 Review `cron/README.md` for any new jobs. Don't blindly recreate — check what you already have with `/cron list`.
 
 ### What can go wrong
@@ -115,7 +118,7 @@ You'll need the following. Get them all before proceeding.
 
 Open the Supabase SQL Editor and paste the contents of `supabase/migration.sql`. Run it.
 
-This creates 12 tables + 1 RPC function:
+This creates 13 tables + 1 RPC function:
 - `user_model_profile_as_items` — user profile facts
 - `user_model_scheduling_constraints_and_preferences` — calendar/scheduling data
 - `user_data_history` — activity history
@@ -128,13 +131,18 @@ This creates 12 tables + 1 RPC function:
 - `smind_life_dimensions` — discovered life dimensions
 - `smind_hos_life_dimensions` — higher-order structure dimensions
 - `smind_data_gap_questions` — questions for the user
+- `smind_society_extended` — extended society job definitions
 - `exec_sql` — RPC function for arbitrary SQL queries
+
+The migration also seeds `smind_hos_life_dimensions` with 7 life dimensions and registers 7 extended Life Dimension Agents in `smind_society`.
 
 ### 2.3 Bootstrap Society
 
 After migration, run `society/bootstrap.sql` in the SQL Editor. This populates:
-- 9 core entities + 7 extended Life Dimension Agents
-- 16 core jobs with full instructions
+- 9 core entities in `smind_society` (extended agents are already seeded by migration)
+- 17 core jobs with full instructions in `smind_society_core_jobs`
+
+Then run `supabase/seed-extended-jobs.sql` to populate the 14 extended society jobs (scientist + evaluator per hOS dimension) in `smind_society_extended`.
 
 ### 2.4 Configure Environment
 
@@ -414,7 +422,8 @@ smind-blueprint/
 │   ├── TOOLS.md
 │   └── USER.md
 ├── supabase/
-│   └── migration.sql           ← Database schema
+│   ├── migration.sql           ← Database schema + hOS/extended seed
+│   └── seed-extended-jobs.sql  ← Extended society job instructions
 ├── society/
 │   ├── bootstrap.sql           ← Entity & job data
 │   └── scientist/              ← Benchmark artifacts
