@@ -12,6 +12,69 @@ This guide walks you through turning a clean OpenClaw installation into a fully 
 
 ---
 
+## Upgrading an Existing SMind?
+
+If you're already running an older version of SMind, **don't start from scratch**. Follow this instead:
+
+### 1. Back up first
+```bash
+# Snapshot your current Supabase data
+# (or just ensure your Snapshot job has run recently)
+```
+
+### 2. Schema migration
+Run `supabase/migration.sql` — it uses `CREATE TABLE IF NOT EXISTS`, so existing tables won't be touched. **But check for column differences:**
+
+```sql
+-- Compare your actual schema against SCHEMA.md
+SELECT table_name, column_name, data_type 
+FROM information_schema.columns 
+WHERE table_schema = 'public' 
+ORDER BY table_name, ordinal_position;
+```
+
+If tables exist but columns differ, you'll need to `ALTER TABLE` manually. The migration won't modify existing tables.
+
+### 3. Society bootstrap (careful!)
+`society/bootstrap.sql` uses plain `INSERT` statements that will **fail on duplicates**. For existing installs, use upserts instead:
+
+```sql
+-- Example: update job instructions without losing your customizations
+INSERT INTO public.smind_society_core_jobs (job_name, enabled, member, instructions)
+VALUES ('scientist_udm_benchmark', true, 'Scientist', '...')
+ON CONFLICT (job_name) DO UPDATE SET instructions = EXCLUDED.instructions;
+```
+
+Or selectively update only the jobs whose instructions you want to refresh.
+
+### 4. Workspace files
+**Don't overwrite** your customized files. Instead:
+- Diff your `AGENTS.md` against `workspace-templates/AGENTS.md` for new protocols
+- Check `HEARTBEAT.md` for updated Face behavior
+- Update `SCHEMA.md` if new tables were added
+
+### 5. Scientist benchmarks
+Safe to overwrite — they're schema-only and self-improving. Copy `society/scientist/` into your workspace.
+
+### 6. Cron jobs
+Review `cron/README.md` for any new jobs. Don't blindly recreate — check what you already have with `/cron list`.
+
+### What can go wrong
+- **Column type mismatches** — if you changed a column type, migration won't catch it
+- **Stale job instructions** — old instructions referencing renamed tables or dropped columns
+- **Orphaned cron jobs** — cron jobs pointing to deleted Supabase jobs
+- **Workspace file conflicts** — your customizations vs new template content
+
+When in doubt, ask your SMind to audit: *"Compare my current Supabase schema against SCHEMA.md and report differences."*
+
+---
+
+## Fresh Install
+
+Everything below assumes a **clean OpenClaw installation**. If upgrading, see above.
+
+---
+
 ## Prerequisites
 
 - ✅ OpenClaw installed and running ([docs.openclaw.ai](https://docs.openclaw.ai))

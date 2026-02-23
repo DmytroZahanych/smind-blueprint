@@ -1,6 +1,8 @@
 -- SMind Blueprint: Supabase Migration
--- Run this against a fresh Supabase project to create all required tables.
--- Requires: exec_sql RPC function (see below)
+-- Safe to run on both fresh and existing projects (uses IF NOT EXISTS).
+-- NOTE: IF NOT EXISTS won't modify existing tables — if columns differ
+-- from what's defined here, you'll need to ALTER TABLE manually.
+-- Compare with SCHEMA.md for the intended schema.
 
 -- ============================================================
 -- exec_sql RPC (used by supabase skill for arbitrary queries)
