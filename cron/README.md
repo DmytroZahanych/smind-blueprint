@@ -1,6 +1,8 @@
 # Cron Jobs
 
-The SMind society pipeline runs on a nightly cycle. Below are the recommended cron jobs.
+> ⚠️ **Do NOT create all jobs at once.** The society pipeline is still being tested. Start by running jobs manually, then automate one at a time as you gain confidence. See SETUP.md Step 8.
+
+The SMind society pipeline runs on a nightly cycle. Below are the recommended cron jobs for when you're ready to automate.
 
 ## Pipeline Order
 

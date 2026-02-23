@@ -201,17 +201,23 @@ git add -A && git commit -m "Initial scientist benchmarks" && git push
 
 ---
 
-## Step 8: Set Up Cron Jobs
+## Step 8: Cron Jobs (Do NOT bulk-create)
 
-The society runs as a nightly pipeline. See `cron/README.md` for the full schedule.
+The society pipeline is documented in `cron/README.md` but **do not create all jobs at once**. The pipeline is still being tested and refined.
 
-You can create jobs via OpenClaw chat or programmatically. Example:
+**Recommended approach:**
+1. Start with **no cron jobs** — run society jobs manually to understand what they do
+2. Enable **Snapshot** first (low risk, just backs up data)
+3. Gradually enable **Scientist** jobs once you have data in your tables
+4. Add **Evaluator** jobs after Scientist benchmarks exist
+5. Add **Worker** jobs last, after you've verified Evaluator issues make sense
 
+To run a job manually, ask your SMind:
 ```
-Hey SMind, create all the society cron jobs from the schedule in cron/README.md
+Run the scientist_udm_benchmark job — fetch instructions from smind_society_core_jobs and execute them
 ```
 
-Or manually via the cron tool for each job (see `cron/README.md` for the payload format).
+When ready to automate a specific job, create its cron entry (see `cron/README.md` for schedule and payload format).
 
 ---
 
